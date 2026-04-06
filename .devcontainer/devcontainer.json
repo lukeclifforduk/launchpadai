@@ -16,7 +16,17 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
-  // Persist Claude auth across Codespace rebuilds
+  // Declare ANTHROPIC_API_KEY as a required Codespace secret.
+  // GitHub will prompt for this when the Codespace is created.
+  // Set it at: https://github.com/settings/codespaces
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key used by Claude Code CLI for authentication.",
+      "documentationUrl": "https://console.anthropic.com/settings/keys"
+    }
+  },
+
+  // Persist Claude config/history across Codespace rebuilds
   "mounts": [
     "source=claude-auth-${devcontainerId},target=/home/vscode/.claude,type=volume"
   ],
@@ -29,8 +39,10 @@
     "4321": { "label": "Astro Dev Server", "onAutoForward": "openPreview" }
   },
 
-  // Symlink ~/.claude.json into the persistent volume
-  "postCreateCommand": "if [ -f /home/vscode/.claude/.claude.json ]; then ln -sf /home/vscode/.claude/.claude.json /home/vscode/.claude.json; else echo '{\"hasCompletedOnboarding\":true}' > /home/vscode/.claude/.claude.json && ln -sf /home/vscode/.claude/.claude.json /home/vscode/.claude.json; fi && echo '✅ Claude Code environment ready!'",
+  // Set up the Claude config directory and write a minimal config if needed.
+  // ANTHROPIC_API_KEY is injected automatically from Codespace secrets —
+  // the Claude CLI picks it up without any extra wiring.
+  "postCreateCommand": "mkdir -p /home/vscode/.claude && if [ ! -f /home/vscode/.claude/.claude.json ]; then echo '{\"hasCompletedOnboarding\":true}' > /home/vscode/.claude/.claude.json; fi && ln -sf /home/vscode/.claude/.claude.json /home/vscode/.claude.json && echo '✅ Claude Code environment ready!'",
 
   "customizations": {
     "vscode": {
