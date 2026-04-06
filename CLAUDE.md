@@ -53,6 +53,7 @@ Rules:
 - If it does not exist yet, create a minimal one that reflects the current state of the project (e.g. a placeholder page, or the actual app entry point once one exists).
 - If the build outputs to a subdirectory (e.g. `dist/` or `out/`), copy or symlink the built `index.html` to the root, or use a root-level `index.html` that redirects to the correct location.
 - Never push a branch that would break or remove the root `index.html`.
+- After any push where visual progress has been made, remind the user with the live preview URL in the format: `https://lukeclifforduk.github.io/launchpadai/` — include this proactively whenever it would be useful for the user to see the current state (e.g. after a UI change, after initialising the project, after completing a feature).
 
 ---
 
