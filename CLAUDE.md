@@ -42,6 +42,20 @@ This file is read by Claude at the start of every session. Keep it up to date as
 
 ---
 
+## GitHub Pages — Live Preview (MANDATORY)
+
+**Every branch push must include a valid `index.html` at the repository root.**
+
+This keeps GitHub Pages working at all times so the user can preview work-in-progress on any branch.
+
+Rules:
+- Before pushing any branch, verify that `index.html` exists at the repo root.
+- If it does not exist yet, create a minimal one that reflects the current state of the project (e.g. a placeholder page, or the actual app entry point once one exists).
+- If the build outputs to a subdirectory (e.g. `dist/` or `out/`), copy or symlink the built `index.html` to the root, or use a root-level `index.html` that redirects to the correct location.
+- Never push a branch that would break or remove the root `index.html`.
+
+---
+
 ## Development Workflow
 
 1. **Plan first** — before writing any code, discuss the feature or change and agree on the approach.
@@ -49,6 +63,7 @@ This file is read by Claude at the start of every session. Keep it up to date as
 3. **No speculative code** — only build what is needed right now.
 4. **Tests for behaviour, not implementation** — write tests that would survive a refactor.
 5. **Always read before editing** — Claude should read a file before modifying it.
+6. **Always ensure `index.html` exists at root before pushing** — see GitHub Pages rule above.
 
 ---
 
