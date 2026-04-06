@@ -1,0 +1,45 @@
+{
+  // The environment name shown in VS Code
+  "name": "Claude Code Prototyping",
+
+  // Base image — Ubuntu with common dev tools
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+
+  "features": {
+    // Node.js 22 — needed for Next.js, React, etc.
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+
+    // OFFICIAL Anthropic feature — installs Claude Code CLI + VS Code extension
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {},
+
+    // GitHub CLI — useful for repo operations from terminal
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Persist Claude auth across Codespace rebuilds
+  "mounts": [
+    "source=claude-auth-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+
+  // Auto-forward these ports for live preview
+  "forwardPorts": [3000, 5173, 4321, 8080],
+  "portsAttributes": {
+    "3000": { "label": "Next.js / React", "onAutoForward": "openPreview" },
+    "5173": { "label": "Vite Dev Server", "onAutoForward": "openPreview" },
+    "4321": { "label": "Astro Dev Server", "onAutoForward": "openPreview" }
+  },
+
+  // Symlink ~/.claude.json into the persistent volume
+  "postCreateCommand": "if [ -f /home/vscode/.claude/.claude.json ]; then ln -sf /home/vscode/.claude/.claude.json /home/vscode/.claude.json; else echo '{\"hasCompletedOnboarding\":true}' > /home/vscode/.claude/.claude.json && ln -sf /home/vscode/.claude/.claude.json /home/vscode/.claude.json; fi && echo '✅ Claude Code environment ready!'",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
