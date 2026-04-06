@@ -1,11 +1,9 @@
-# launchpadai
+# Launchpad
 
-> Web application project — in planning.
+A single-page web application built as a visual presentation — a polished, browser-based alternative to a slide deck.
 
-## Getting Started
+Hosted on GitHub Pages: **https://lukeclifforduk.github.io/launchpadai/**
 
-See [CLAUDE.md](./CLAUDE.md) for the full project guide, tech stack decisions, and development conventions.
+## Development
 
-## Status
-
-This project is in the planning phase. Tech stack and architecture are being decided.
+See [CLAUDE.md](./CLAUDE.md) for the full project guide, tech stack decisions, and conventions.

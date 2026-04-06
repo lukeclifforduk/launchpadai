@@ -6,13 +6,9 @@ This file is read by Claude at the start of every session. Keep it up to date as
 
 ## Project Overview
 
-> **Fill this in before starting development.**
->
-> Example: "A SaaS dashboard for small businesses to track invoices and payments."
-
-**Name:** (TBD)
-**Purpose:** (TBD)
-**Target users:** (TBD)
+**Name:** Launchpad
+**Purpose:** A single-page web application that acts as a visual presentation. Designed to be viewed in a browser — think a polished, interactive slide deck or scrolling showcase rather than a traditional app.
+**Target users:** Anyone the presentation is shared with — likely viewed on desktop but should be responsive.
 
 ---
 
@@ -116,10 +112,10 @@ TBD
 
 - [ ] Tech stack decided
 - [ ] Project initialised
-- [ ] Core data model defined
-- [ ] Authentication working
-- [ ] First feature complete
-- [ ] Deployed to staging
+- [ ] Presentation structure / slides defined
+- [ ] Content written
+- [ ] Visual design complete
+- [ ] Live on GitHub Pages
 
 ---
 
