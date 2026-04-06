@@ -19,7 +19,6 @@
       overflow: hidden;
     }
 
-    /* Subtle radial glow */
     body::before {
       content: "";
       position: fixed;
@@ -58,13 +57,53 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 1.5rem;
+      margin-bottom: 3rem;
     }
 
-    p {
-      font-size: 1.1rem;
-      color: #6b7280;
-      letter-spacing: 0.01em;
+    .countdown {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .value {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: #fff;
+    }
+
+    .label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #4b5563;
+    }
+
+    .separator {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 300;
+      color: #2a2a2a;
+      align-self: flex-start;
+      padding-top: 0.1em;
+      line-height: 1;
+    }
+
+    .done {
+      font-size: 1.2rem;
+      color: #a5b4fc;
+      letter-spacing: 0.05em;
     }
   </style>
 </head>
@@ -72,7 +111,36 @@
   <div class="container">
     <div class="badge">Coming Soon</div>
     <h1>Launchpad</h1>
-    <p>Something is on its way.</p>
+    <div class="countdown" id="countdown">
+      <div class="unit"><span class="value" id="hours">24</span><span class="label">Hours</span></div>
+      <div class="separator">:</div>
+      <div class="unit"><span class="value" id="minutes">00</span><span class="label">Minutes</span></div>
+      <div class="separator">:</div>
+      <div class="unit"><span class="value" id="seconds">00</span><span class="label">Seconds</span></div>
+    </div>
   </div>
+
+  <script>
+    const end = Date.now() + 24 * 60 * 60 * 1000;
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function tick() {
+      const remaining = end - Date.now();
+      if (remaining <= 0) {
+        document.getElementById("countdown").innerHTML = '<span class="done">Launching now</span>';
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      document.getElementById("hours").textContent   = pad(h);
+      document.getElementById("minutes").textContent = pad(m);
+      document.getElementById("seconds").textContent = pad(s);
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>
