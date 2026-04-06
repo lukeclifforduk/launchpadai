@@ -3,45 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>launchpadai — in progress</title>
+  <title>Launchpad — Coming Soon</title>
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f0f0f;
-      color: #e5e5e5;
+      background: #080808;
+      color: #fff;
+      min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      overflow: hidden;
     }
-    .card {
+
+    /* Subtle radial glow */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .container {
       text-align: center;
-      padding: 3rem 4rem;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      background: #161616;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
     }
-    h1 { margin: 0 0 0.5rem; font-size: 1.8rem; font-weight: 600; }
-    p  { margin: 0; color: #888; font-size: 1rem; }
-    .dot {
+
+    .badge {
       display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #f59e0b;
-      margin-right: 0.5rem;
-      animation: pulse 2s infinite;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #a5b4fc;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 999px;
+      padding: 0.35rem 1rem;
+      margin-bottom: 2rem;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
+
+    h1 {
+      font-size: clamp(3.5rem, 10vw, 7rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      background: linear-gradient(135deg, #fff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: #6b7280;
+      letter-spacing: 0.01em;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1><span class="dot"></span>launchpadai</h1>
-    <p>Project in planning — check back soon.</p>
+  <div class="container">
+    <div class="badge">Coming Soon</div>
+    <h1>Launchpad</h1>
+    <p>Something is on its way.</p>
   </div>
 </body>
 </html>
