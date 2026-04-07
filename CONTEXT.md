@@ -338,17 +338,37 @@ The PXP logo consists of:
 - The text **"pxp"** in **bold sans-serif** (approximately 60-70% of the ring height) positioned to the right of the icon
 - The ring and "x" are solid, the text is bold and uppercase weight
 
-**PNG Files Available:**
-- `PXP_Logo_Black.png` — black variant for light backgrounds
-- `PXP_Logo_White.png` — white variant for dark backgrounds
-- Both stored at repo root and in `/assets/` folder
+### Reference PNG Files
 
-**SVG Implementation:**
-For the HTML presentation, the logo will be **inline SVG using `currentColor`** — one component that swaps between black/white via CSS theme variables. This is preferable to PNG files because:
-- Scales perfectly on any display (projectors, retina, etc.)
-- No external file dependencies
-- Responds instantly to theme toggles
+Located in `/assets/` folder (also stored at repo root for backup):
+- **`/assets/PXP_Logo_Black.png`** — black variant for light backgrounds (16.4 KB)
+- **`/assets/PXP_Logo_White.png`** — white variant for dark backgrounds (16.0 KB)
+
+These files serve as design reference for recreating the logo as inline SVG.
+
+### SVG Implementation (for index.html)
+
+For the HTML presentation, the logo will be **inline SVG using `currentColor`** — one reusable component that swaps between black/white via CSS theme variables:
+
+```html
+<!-- Example structure (to be refined in index.html) -->
+<svg class="logo" viewBox="0 0 100 100">
+  <!-- Ring -->
+  <circle cx="35" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="8" style="stroke-dasharray: 180 360; transform-origin: center; transform: rotate(-45deg)"/>
+  <!-- X mark -->
+  <line x1="25" y1="40" x2="45" y2="60" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <line x1="45" y1="40" x2="25" y2="60" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <!-- Text "pxp" -->
+  <text x="55" y="60" font-family="system-ui, sans-serif" font-size="28" font-weight="700" fill="currentColor">pxp</text>
+</svg>
+```
+
+**Why inline SVG over PNG:**
+- Scales perfectly on any display (projectors, retina, responsive)
+- No external file dependencies — single HTML file
+- Responds instantly to theme toggles (black ↔ white)
 - Lightweight and performant
+- Can be animated with GSAP if needed
 
 ---
 

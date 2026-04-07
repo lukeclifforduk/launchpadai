@@ -5,6 +5,17 @@
 
 ---
 
+## Assets Inventory
+
+All design reference files are located in the `/assets/` folder:
+
+- **`/assets/PXP_Logo_Black.png`** (16.4 KB) — Black logo variant, reference for light backgrounds
+- **`/assets/PXP_Logo_White.png`** (16.0 KB) — White logo variant, reference for dark backgrounds
+
+**How to use:** These PNGs show the exact logo structure and proportions. Study them to recreate the logo as **inline SVG** in `index.html` using `currentColor` for automatic theme switching.
+
+---
+
 ## Quick Summary
 
 Build a **single, self-contained `index.html`** file that presents a 7-screen, full-screen demo of PXP LaunchPad. The file must:
@@ -350,8 +361,19 @@ Build a **single, self-contained `index.html`** file that presents a 7-screen, f
 |---|---|
 | `index.html` | Single self-contained file — your deliverable |
 | CONTEXT.md | Reference for all design details, colours, narration |
-| CLAUDE.md | Project guide, tech stack |
-| `PXP_Logo_Black.png`, `PXP_Logo_White.png` | Reference for logo design (you'll recreate as SVG) |
+| DEVELOPMENT_PLAN.md | This file — implementation roadmap |
+| CLAUDE.md | Project guide, tech stack, conventions |
+
+### Asset Files (Design Reference)
+
+All image assets stored in `/assets/` folder:
+
+| File | Location | Purpose |
+|---|---|---|
+| `PXP_Logo_Black.png` | `/assets/PXP_Logo_Black.png` | Reference for logo design on light backgrounds |
+| `PXP_Logo_White.png` | `/assets/PXP_Logo_White.png` | Reference for logo design on dark backgrounds |
+
+**Note:** These PNG files are design references only. You will **recreate the logo as inline SVG** in `index.html` using `currentColor` for theme switching. The PNGs help you understand the exact structure and proportions.
 
 ### CDNs:
 - Tailwind CSS (JIT): `https://cdn.tailwindcss.com`
