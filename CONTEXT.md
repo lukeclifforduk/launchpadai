@@ -86,76 +86,225 @@ The product manager (Luke) presents this to **partners and internal stakeholders
 ## The 7 Screens
 
 ### Screen 1 — Welcome / Business Benefits
-- **Background:** Light gradient (White → Cyan → Lime, subtle)
-- **Logo:** Top-left, black variant
-- **Content:** "PXP LaunchPad" headline, "Merchant Onboarding Made Simple" subline, body paragraph, 2x3 benefits grid
-- **Benefits grid items:**
-  - ⚡ Accelerated Time to Revenue
-  - 🤖 Intelligent Automation
-  - 🛍️ Flexible Payments Ecosystem
-  - 🔒 Integrated Risk & Compliance
-  - 📄 Automated Contracting
-  - 🔗 Single Unified Onboarding
-- **Animation:** Staggered fade-in: headline → subline → body → grid cards slide up
+
+**Background:** Light gradient (White → Cyan → Lime, subtle, top-left to bottom-right) + ambient particle motion
+
+**Logo:** Top-left, black variant (via persistent UI)
+
+**Headline:** "PXP LaunchPad" (large, bold, dark text)
+
+**Subline:** "Merchant Onboarding Made Simple" (secondary weight)
+
+**Body paragraph:** Brief, punchy introduction to the platform (condensed, ~2-3 sentences)
+
+**Benefits Grid:** 2×3 glassmorphism cards with SVG line icons (Lucide-style):
+1. ⚡ **Zap icon** → "Accelerated Time to Revenue"
+2. 🤖 **Bot/CPU icon** → "Intelligent Automation"
+3. 🛍️ **Shopping Bag icon** → "Flexible Payments Ecosystem"
+4. 🔒 **Shield icon** → "Integrated Risk & Compliance"
+5. 📄 **File Text icon** → "Automated Contracting"
+6. 🔗 **Link icon** → "Single Unified Onboarding"
+
+**Cards:** Glassmorphism style — semi-transparent backdrop blur, soft border, rounded corners (border-radius 20px+)
+
+**Animation:** Staggered fade-in sequence:
+1. Headline fades in
+2. Subline fades in
+3. Body paragraph fades in
+4. Grid cards slide up + fade in (staggered ~100-150ms apart)
+- Total animation duration: ~1.2-1.5s, smooth easing
 
 ### Screen 2 — The Warm Lead
-- **Layout:** Merchant person icon (left) → horizontal arrow → PXP corporate icon (right)
-- **Background:** Clean light grey
-- **Animation:** Merchant icon renders Cyan, colour-shifts to Lime (~2s). Arrow draws left-to-right.
-- **Narration text:** "You've done the hard work, warmed a lead and have a merchant ready to onboard. This next bit really should be easy."
-- **Intent:** Simple, minimal, sets expectation of ease
+
+**Layout:** Merchant person icon (left) → horizontal arrow → PXP corporate icon (right), centered vertically on screen
+
+**Background:** Clean light grey (#EDEEEF) + subtle ambient particle motion
+
+**Condensed narration (on-screen):** "You warm the lead. We make the rest easy."
+
+**Animation:**
+1. Continuity layer fades in (SVG line with icons)
+2. Merchant icon renders in Cyan (#44DAFD)
+3. Merchant icon colour-shifts: Cyan → Lime (#CAFF0A) over ~2s smooth ease
+4. Arrow draws left-to-right via SVG stroke-dashoffset (~0.8s)
+5. PXP icon appears at right (opacity fade-in)
+
+**Parallax:** Both icons shift slightly on mouse move for subtle depth perception
+
+**Intent:** Simple, minimal, sets expectation of ease
 
 ### Screen 3 — The Problem
-- **Layout:** Same merchant→PXP line (visual continuity from Screen 2)
-- **Background:** Slightly warmer grey (subtly more tense)
-- **Added elements:** 3 icons drop from above onto the line:
-  1. PDF/Document icon + red strike-through
-  2. Email/Envelope icon + red strike-through
-  3. Keyboard/Manual Entry icon + red strike-through
-- **Animation:** Sequential drop-in ~0.6s apart, strike-through draws left-to-right ~0.4s each
-- **Intent:** Visual friction — deliberate chaos before the resolution
+
+**Layout:** Same merchant→PXP continuity line persists (visual continuity from Screen 2)
+
+**Background:** Slightly warmer grey (more saturated than Screen 2) — subtly more tense
+
+**Condensed narration (on-screen):** "But there are always 'things' in the way. PDFs. Emails. Manual entry."
+
+**Added elements:** 3 problem icons drop vertically onto the line:
+1. Document/PDF icon + red strike-through line
+2. Envelope/Email icon + red strike-through line
+3. Keyboard/Manual Entry icon + red strike-through line
+
+**Animation:**
+1. Continuity line persists from Screen 2
+2. Icons drop from above sequentially (~0.5-0.6s apart), landing on line with bounce effect
+3. Each icon gets a red strike-through that draws left-to-right (~0.4s per line)
+4. Total animation: ~2.5s
+
+**Intent:** Visual friction — deliberate chaos and frustration before the resolution on Screen 4
 
 ### Screen 4 — The Solution
-- **Layout:** Same merchant→PXP line continues
-- **Background:** Returns to clean light (relief)
-- **Added elements:** 4 branch lines extend from main line to icons:
-  - Above-left: Clock → "Save Time with Data In"
-  - Above-right: Questionnaire (one crossed out) → "Streamline with Tailored Questions"
-  - Below-left: Shopping basket → "Simple Product Selection"
-  - Below-right: Two documents with checkmarks → "Automatic Contracting"
-- **Animation:** Branch lines draw outward (~0.5s each), icon appears at end, label fades in. Total ~3s staggered.
-- **Intent:** Chaos resolved into elegant structure
+
+**Layout:** Same merchant→PXP continuity line continues. Problem icons fade out. 4 branch lines extend outward.
+
+**Background:** Returns to clean light (#EDEEEF) — relief after tension of Screen 3
+
+**Condensed narration (on-screen):** "So we built LaunchPad. Less keystrokes. Less time. Less stress."
+
+**Added elements:** 4 branch lines draw from main line with icons at endpoints:
+- **Above-left:** Clock icon → "Save Time with Data In"
+- **Above-right:** Questionnaire/Checklist icon (one item crossed out) → "Tailored Questions"
+- **Below-left:** Shopping Basket icon → "Simple Product Selection"
+- **Below-right:** Documents with checkmarks icon → "Automatic Contracting"
+
+**Animation:**
+1. Problem icons fade out (~0.3s)
+2. Branch lines draw outward from main line sequentially (~0.5s per line, ~0.3s stagger)
+3. Icon appears at endpoint (opacity fade-in)
+4. Label text fades in below icon
+5. Total animation: ~3s staggered
+
+**Intent:** Visual resolution — chaos transformed into elegant, organized structure
 
 ### Screen 5 — Full System Diagram
-- **Layout:** Full-width, diagram fills ~80% of screen
-- **Background:** Light grey with subtle depth
-- **Content:** HTML/SVG process diagram with 4 sections:
-  - **1. Sales (Direct/Partners):** Application Start → Product Selection → Tailored Questions → Application End (Contract)
-  - **2. Risk & Underwriting:** Screening → Review → Approve/Decline
-  - **3. Onboarding:** Payment Service → Unity Config → Additional Setup
-  - **4. Fulfilment:** Product Fulfilment → CRM(s), Orders, Tracking
-- **Highlighted nodes** (Violet fill 20% + Violet border + glow pulse):
-  - Related Entities*, Product & Pricing*, Questions*, Documents*, Generate Contract*, AdobeSign Send
-- **Animation:** Assembles section-by-section left-to-right (~1.5s)
+
+**Background:** Light grey with subtle depth
+
+**Condensed narration:** "LaunchPad is a big system. Partners, products, processes, merchants — one location."
+
+**Content:** Full faithful HTML/SVG process diagram with 4 sections. All nodes shown, all connectors visible.
+
+#### Diagram Structure (Left to Right):
+
+**External Inputs** → **1. Sales (Direct/Partners)** → **2. Risk & Underwriting** → **3. Onboarding** → **4. Fulfilment**
+
+**Section 1: Sales (Direct/Partners)**
+- Application Start (Lead & Screen):
+  - Lead Information*
+  - Screening*
+  - Related Entities*
+- Product Selection:
+  - Product & Pricing*
+  - [Tailored Products & Smart Pricing Engine]
+- Tailored Questions:
+  - Questions*
+  - Documents*
+  - [Dynamic Questions]
+- Application End (Contract):
+  - Generate Contract*
+  - AdobeSign Send
+  - Merchant Signs
+
+**Section 2: Risk & Underwriting**
+- Screening Checks Performed
+- Underwriting Team Review & Make Decision
+  - Business & Bank Screening
+  - Scheme Screening
+  - Identity & PEPs Screening
+  - (Other regulatory checks)
+- Approve/Decline (diamond decision)
+
+**Section 3: Onboarding**
+- Payment Service
+- Unity Product Config:
+  - Generate MIDs
+  - Merchant & Sites Config
+  - Products Config
+- Additional Merchant Set Up:
+  - Zendesk
+  - NetSuite
+  - (Other platforms)
+
+**Section 4: Fulfilment**
+- Product Fulfilment
+- CRM(s):
+  - Place Order → Dynamics
+  - Track Order → HubSpot
+- External (Ac Pa)
+
+**Highlighted Partner-Responsible Nodes** (Violet #A047FF at 20% fill + Violet border + subtle glow pulse):
+- Related Entities*
+- Product & Pricing*
+- Questions*
+- Documents*
+- Generate Contract*
+- AdobeSign Send
+
+**Animation:** Assembles section-by-section left-to-right (~1.5s total). Each section fades in with connectors drawing.
 
 ### Screen 6 — Zoomed Partner Focus
-- **Transition from Screen 5:** GSAP zoom into highlighted region
-- **Non-highlighted areas:** blur(4px) + opacity 0.15, fade out
-- **Zoomed region scales to ~80% viewport**
-- **Shows only partner-responsible steps:**
-  - Lead Information* → Screening* → Related Entities*
+
+**Transition from Screen 5:** GSAP zoom transformation (not a separate screen — shares Screen 5's DOM)
+
+**Background:** Same light grey as Screen 5
+
+**Condensed narration (on-screen):** "These are your steps. Let's explore them in the demo."
+
+**Zoom Animation (~1.2s):**
+1. Non-highlighted nodes: blur(4px) + opacity 0.15 fade
+2. Container scales + translates so highlighted region centers at ~80% of viewport
+3. Non-highlighted nodes fully fade to opacity 0
+4. Label "Your steps in the journey" fades in below
+5. Highlighted nodes get enhanced Violet glow (#A047FF)
+
+**Highlighted nodes visible post-zoom:**
+- Application Start section:
+  - Lead Information*
+  - Screening*
+  - Related Entities*
+- Product Selection:
   - Product & Pricing*
-  - Questions* → Documents*
-  - Generate Contract* → AdobeSign Send
-- **Post-zoom:** Highlighted nodes glow Violet, label "Your steps in the journey" appears
-- **Technical:** Shares Screen 5's DOM — zoom is a transform, not a separate view. Reverse navigation calls `timeline.reverse()`.
+- Tailored Questions:
+  - Questions*
+  - Documents*
+- Application End:
+  - Generate Contract*
+  - AdobeSign Send
+
+**Reverse Navigation (Screen 6 → 5):**
+- Calls `timeline.reverse()` — perfectly restores original diagram state
+- All animations run backward smoothly
+- No re-render, no state loss
+
+**Technical Implementation:**
+- Shares Screen 5's DOM — zoom is a CSS transform, not a separate component
+- Store zoom timeline separately, never rebuild
+- Calculate bounding box of highlighted nodes on first visit
 
 ### Screen 7 — Outro / Demo Transition
-- **Background:** Dark gradient (Black → Cyan → Plum) — always dark
-- **Logo:** White variant, top-left
-- **Content:** "Any questions so far, or jump straight into the demo?"
-- **CTA:** Pill button, Lime background, dark text: "Open LaunchPad →" → opens `https://www.partner.pxpfinancial.com` in new tab
-- **Animation:** Fade in from dark, text + button staggered ~0.8s apart
+
+**Background:** Dark gradient (Black → Cyan (#44DAFD) → Plum (#540B90)) — always dark regardless of theme toggle
+
+**Logo:** White variant (forced, ignores light/dark toggle)
+
+**Content:**
+- Headline: "Any questions so far, or jump straight into the demo?" (large, light weight, white text)
+- **CTA button:** Promoted to center of screen, large Lime (#CAFF0A) pill button with dark text, bold: "Open LaunchPad →"
+  - Opens `https://www.partner.pxpfinancial.com` in new tab on click
+  - Hover state: subtle scale (1.05), brightness lift, Violet glow halo
+
+**Persistent subtle CTA link:**
+- Hidden on Screen 7 (the promoted button takes over)
+- Visible on Screens 1-6 (bottom area, unobtrusive)
+
+**Animation:**
+1. Entire screen fades in from dark opacity
+2. Headline fades in + slide up
+3. CTA button fades in + slides up (staggered ~0.8s after headline)
+4. Total animation: ~1.5s
+
+**Intent:** Clear call-to-action, transition to live product demo
 
 ---
 
@@ -181,13 +330,45 @@ The product manager (Luke) presents this to **partners and internal stakeholders
 
 ---
 
-## PXP Logo Description (for SVG recreation)
+## PXP Logo Details
 
 The PXP logo consists of:
-- A **circular open ring** (like a letter C rotated) with a gap at the bottom-left
-- An **"x" mark** sitting in/near the gap of the ring
-- The text **"pxp"** in lowercase bold sans-serif to the right of the ring icon
-- Two variants: all-black on light backgrounds, all-white on dark backgrounds
+- A **thick circular open ring** (like a rotated "C" with a gap at bottom-left)
+- An **"x" mark** (cross/plus shape) positioned in/near the gap of the ring
+- The text **"pxp"** in **bold sans-serif** (approximately 60-70% of the ring height) positioned to the right of the icon
+- The ring and "x" are solid, the text is bold and uppercase weight
+
+### Reference PNG Files
+
+Located in `/assets/` folder (also stored at repo root for backup):
+- **`/assets/PXP_Logo_Black.png`** — black variant for light backgrounds (16.4 KB)
+- **`/assets/PXP_Logo_White.png`** — white variant for dark backgrounds (16.0 KB)
+
+These files serve as design reference for recreating the logo as inline SVG.
+
+### SVG Implementation (for index.html)
+
+For the HTML presentation, the logo will be **inline SVG using `currentColor`** — one reusable component that swaps between black/white via CSS theme variables:
+
+```html
+<!-- Example structure (to be refined in index.html) -->
+<svg class="logo" viewBox="0 0 100 100">
+  <!-- Ring -->
+  <circle cx="35" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="8" style="stroke-dasharray: 180 360; transform-origin: center; transform: rotate(-45deg)"/>
+  <!-- X mark -->
+  <line x1="25" y1="40" x2="45" y2="60" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <line x1="45" y1="40" x2="25" y2="60" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <!-- Text "pxp" -->
+  <text x="55" y="60" font-family="system-ui, sans-serif" font-size="28" font-weight="700" fill="currentColor">pxp</text>
+</svg>
+```
+
+**Why inline SVG over PNG:**
+- Scales perfectly on any display (projectors, retina, responsive)
+- No external file dependencies — single HTML file
+- Responds instantly to theme toggles (black ↔ white)
+- Lightweight and performant
+- Can be animated with GSAP if needed
 
 ---
 
