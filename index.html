@@ -1,147 +1,1126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LaunchPad — Coming Soon</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXP LaunchPad</title>
+
+  <!-- Tailwind CSS (CDN, JIT) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollToPlugin.min.js"></script>
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #080808;
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-
+    /* ===== CSS CUSTOM PROPERTIES (Brand System) ===== */
+    :root {
+      --white: #FBFBFB;
+      --grey: #EDEEEF;
+      --cyan: #44DAFD;
+      --lime: #CAFF0A;
+      --plum: #540B90;
+      --violet: #A047FF;
     }
 
-    body::before {
-      content: "";
+    /* Light theme (default) */
+    [data-theme="light"] {
+      --bg-primary: var(--white);
+      --bg-secondary: var(--grey);
+      --text-primary: #000;
+      --text-secondary: #333;
+      --border-color: rgba(0, 0, 0, 0.1);
+      --logo-color: #000;
+      --surface-bg: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Dark theme */
+    [data-theme="dark"] {
+      --bg-primary: #0a0e27;
+      --bg-secondary: #151b2f;
+      --text-primary: var(--white);
+      --text-secondary: #ccc;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --logo-color: var(--white);
+      --surface-bg: rgba(10, 14, 39, 0.7);
+    }
+
+    /* ===== RESET + BASE ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: auto;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== SCREEN LAYOUT ===== */
+    section {
       position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease;
+    }
+
+    section.active {
+      opacity: 1;
+      z-index: 20;
+    }
+
+    /* ===== PERSISTENT UI LAYER ===== */
+    .persistent-ui {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 40;
+    }
+
+    .persistent-ui > * {
+      pointer-events: auto;
+    }
+
+    /* Logo (top-left) */
+    .logo {
+      position: fixed;
+      top: 2rem;
+      left: 2rem;
+      width: 80px;
+      height: auto;
+      color: var(--logo-color);
+      z-index: 40;
+    }
+
+    /* Theme toggle (bottom-right) */
+    .theme-toggle {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 50px;
+      height: 50px;
+      background: var(--surface-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: all 0.3s ease;
+      z-index: 40;
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface-bg);
+      transform: scale(1.1);
+    }
+
+    /* Dot navigation (right edge) */
+    .dot-nav {
+      position: fixed;
+      right: 2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      z-index: 40;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border-color);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot:hover {
+      width: 14px;
+      height: 14px;
+      background: var(--cyan);
+      transform: scale(1.15);
+    }
+
+    .dot.active {
+      width: 16px;
+      height: 16px;
+      background: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .dot-counter {
+      position: fixed;
+      right: 2rem;
+      bottom: 6rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      text-align: center;
+      z-index: 40;
+    }
+
+    /* Prev/Next buttons (bottom center) */
+    .nav-buttons {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 2rem;
+      z-index: 40;
+    }
+
+    .nav-button {
+      width: 48px;
+      height: 48px;
+      background: var(--surface-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .nav-button:hover {
+      background: var(--surface-bg);
+      transform: scale(1.05);
+    }
+
+    /* CTA link (persistent, Screens 1-6) */
+    .cta-link {
+      position: fixed;
+      bottom: 2rem;
+      left: 2rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 40;
+    }
+
+    .cta-link:hover {
+      color: var(--cyan);
+      text-decoration: underline;
+    }
+
+    section:nth-child(7) .cta-link {
+      display: none;
+    }
+
+    /* ===== CONTINUITY SVG LAYER (Screens 2-4) ===== */
+    .continuity-layer {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      max-width: 800px;
+      opacity: 0;
+      z-index: 30;
       pointer-events: none;
     }
 
-    .container {
+    /* ===== MOBILE LANDSCAPE PROMPT ===== */
+    .mobile-prompt {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      color: white;
+      font-size: 1.5rem;
       text-align: center;
-      padding: 2rem;
+    }
+
+    .mobile-prompt.show {
+      display: flex;
+    }
+
+    /* ===== BUTTON GLOW ===== */
+    #screen7Cta:hover {
+      box-shadow: 0 0 20px rgba(160, 71, 255, 0.8), 0 0 40px rgba(160, 71, 255, 0.4);
+    }
+
+    /* Logo subtle glow */
+    .logo {
+      filter: drop-shadow(0 0 8px rgba(68, 218, 253, 0.4));
+    }
+
+    /* ===== GENERAL CARD/PANEL STYLES ===== */
+    .glass-panel {
+      backdrop-filter: blur(10px);
+      background: var(--surface-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.5rem;
+    }
+
+    .glass-card {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 20px;
+      padding: 1.5rem;
+    }
+
+    [data-theme="dark"] .glass-card {
+      background: rgba(30, 40, 70, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* ===== ANIMATION KEYFRAMES ===== */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 4px var(--violet)); }
+      50% { filter: drop-shadow(0 0 12px var(--violet)); }
+    }
+
+    @keyframes particle-drift {
+      0%, 100% { transform: translate(0, 0); opacity: 0.03; }
+      50% { transform: translate(20px, -20px); opacity: 0.08; }
+    }
+
+    /* Ambient gradient shift */
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    section {
+      background-size: 200% 200%;
+    }
+
+    section:nth-child(1) {
+      animation: gradient-shift 25s ease-in-out infinite;
+    }
+
+    section:nth-child(2),
+    section:nth-child(4) {
       position: relative;
+    }
+
+    section:nth-child(2)::before,
+    section:nth-child(4)::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 20% 50%, rgba(68, 218, 253, 0.05) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(202, 255, 10, 0.03) 0%, transparent 50%);
+      animation: particle-drift 30s ease-in-out infinite;
+      pointer-events: none;
       z-index: 1;
     }
 
-    .badge {
-      display: inline-block;
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #a5b4fc;
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      border-radius: 999px;
-      padding: 0.35rem 1rem;
-      margin-bottom: 2rem;
+    section:nth-child(2) > *,
+    section:nth-child(4) > * {
+      position: relative;
+      z-index: 2;
     }
 
-    h1 {
-      font-size: clamp(3.5rem, 10vw, 7rem);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1;
-      background: linear-gradient(135deg, #fff 30%, #a5b4fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 3rem;
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
     }
 
-    .countdown {
-      display: flex;
-      gap: 2rem;
-      justify-content: center;
-      flex-wrap: wrap;
+    /* ===== DIAGRAM NODES ===== */
+    .diagram-node {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.875rem;
+      color: #333;
+      text-align: center;
+      white-space: nowrap;
+      transition: all 0.3s ease;
     }
 
-    .unit {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .value {
-      font-size: clamp(2.5rem, 6vw, 4rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      font-variant-numeric: tabular-nums;
-      line-height: 1;
+    [data-theme="dark"] .diagram-node {
+      background: #222;
+      border-color: #444;
       color: #fff;
     }
 
-    .label {
-      font-size: 0.7rem;
-      font-weight: 500;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #4b5563;
+    .diagram-node[data-highlight="true"] {
+      background: rgba(160, 71, 255, 0.15);
+      border: 2px solid var(--violet);
+      color: #333;
+      font-weight: 600;
+      animation: pulse-highlight 0.8s ease-in-out infinite;
     }
 
-    .separator {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 300;
-      color: #2a2a2a;
-      align-self: flex-start;
-      padding-top: 0.1em;
-      line-height: 1;
+    [data-theme="dark"] .diagram-node[data-highlight="true"] {
+      color: #fff;
     }
 
-    .done {
-      font-size: 1.2rem;
-      color: #a5b4fc;
-      letter-spacing: 0.05em;
+    @keyframes pulse-highlight {
+      0%, 100% { filter: drop-shadow(0 0 4px var(--violet)); }
+      50% { filter: drop-shadow(0 0 12px var(--violet)); }
+    }
+
+    .diagram-decision {
+      border-radius: 0;
+      transform: rotate(45deg);
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    /* ===== SCREEN-SPECIFIC OVERRIDES ===== */
+    /* Screen 7: Force dark theme */
+    section:nth-child(7) {
+      background: linear-gradient(135deg, #000 0%, var(--cyan) 50%, var(--plum) 100%);
+    }
+
+    [data-theme="light"] section:nth-child(7) {
+      color: var(--white);
+    }
+
+    [data-theme="dark"] section:nth-child(7) {
+      color: var(--white);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="badge">Coming Really Soon</div>
-    <h1>LaunchPad</h1>
-    <div class="countdown" id="countdown">
-      <div class="unit"><span class="value" id="hours">12</span><span class="label">Hours</span></div>
-      <div class="separator">:</div>
-      <div class="unit"><span class="value" id="minutes">00</span><span class="label">Minutes</span></div>
-      <div class="separator">:</div>
-      <div class="unit"><span class="value" id="seconds">00</span><span class="label">Seconds</span></div>
+  <!-- ===== PERSISTENT UI ===== -->
+  <div class="persistent-ui">
+    <!-- Logo (top-left) -->
+    <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Ring (open circle) -->
+      <circle cx="35" cy="50" r="28" fill="none" stroke="currentColor" stroke-width="7"
+              style="stroke-dasharray: 165 360; transform-origin: center; transform: rotate(-45deg);"/>
+      <!-- X mark -->
+      <line x1="22" y1="37" x2="48" y2="63" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+      <line x1="48" y1="37" x2="22" y2="63" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+      <!-- Text "pxp" -->
+      <text x="58" y="62" font-family="system-ui, sans-serif" font-size="32" font-weight="700" fill="currentColor">pxp</text>
+    </svg>
+
+    <!-- Theme toggle (bottom-right) -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+
+    <!-- Dot navigation (right edge) -->
+    <div class="dot-nav" id="dotNav"></div>
+    <div class="dot-counter" id="dotCounter">1/7</div>
+
+    <!-- Prev/Next buttons (bottom center) -->
+    <div class="nav-buttons">
+      <button class="nav-button" id="prevBtn" aria-label="Previous screen">←</button>
+      <button class="nav-button" id="nextBtn" aria-label="Next screen">→</button>
+    </div>
+
+    <!-- CTA link (persistent, Screens 1-6) -->
+    <a href="https://www.partner.pxpfinancial.com" target="_blank" class="cta-link" id="ctaLink">
+      Open LaunchPad →
+    </a>
+  </div>
+
+  <!-- ===== CONTINUITY SVG LAYER (Screens 2-4) ===== -->
+  <svg class="continuity-layer" id="continuityLayer" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+    <!-- Merchant icon (left) -->
+    <g id="merchantIcon" transform="translate(50, 100)">
+      <circle cx="0" cy="0" r="20" fill="var(--cyan)" stroke="currentColor" stroke-width="2"/>
+      <circle cx="0" cy="-8" r="6" fill="var(--cyan)"/>
+      <path d="M -15,10 Q 0,20 15,10" fill="var(--cyan)" stroke="currentColor" stroke-width="2"/>
+    </g>
+
+    <!-- Arrow (center) -->
+    <line id="continuityArrow" x1="100" y1="100" x2="700" y2="100" stroke="currentColor" stroke-width="3"
+          style="stroke-dasharray: 600 600;"/>
+    <polygon id="arrowHead" points="700,100 685,95 685,105" fill="currentColor"/>
+
+    <!-- PXP icon (right) -->
+    <g id="pxpIcon" transform="translate(750, 100)" opacity="0">
+      <circle cx="0" cy="0" r="20" fill="none" stroke="currentColor" stroke-width="2"
+              style="stroke-dasharray: 115 360; transform-origin: center; transform: rotate(-45deg);"/>
+      <line x1="-12" y1="-12" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="-12" x2="-12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Solution branch lines (Screen 4) - initially hidden -->
+    <g id="solutionBranches" opacity="0">
+      <!-- Above-left: Clock icon + "Save Time with Data In" -->
+      <line id="branchAboveLeft" x1="400" y1="100" x2="280" y2="40" stroke="currentColor" stroke-width="3" style="stroke-dasharray: 80 80;"/>
+      <g id="clockIcon" transform="translate(250, 20)">
+        <circle cx="0" cy="0" r="12" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="0" y1="-8" x2="0" y2="-3" stroke="currentColor" stroke-width="2"/>
+        <line x1="5" y1="0" x2="9" y2="0" stroke="currentColor" stroke-width="2"/>
+      </g>
+      <text id="labelClockText" x="250" y="45" font-size="12" fill="currentColor" text-anchor="middle" opacity="0">Save Time</text>
+
+      <!-- Above-right: Checklist icon + "Tailored Questions" -->
+      <line id="branchAboveRight" x1="500" y1="100" x2="620" y2="40" stroke="currentColor" stroke-width="3" style="stroke-dasharray: 80 80;"/>
+      <g id="checklistIcon" transform="translate(650, 20)">
+        <rect x="-10" y="-10" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+        <line x1="-6" y1="-2" x2="-2" y2="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="-2" y1="2" x2="4" y2="-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="-8" y1="6" x2="8" y2="6" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+      </g>
+      <text id="labelChecklistText" x="650" y="45" font-size="12" fill="currentColor" text-anchor="middle" opacity="0">Tailored</text>
+
+      <!-- Below-left: Basket icon + "Simple Product Selection" -->
+      <line id="branchBelowLeft" x1="380" y1="100" x2="280" y2="160" stroke="currentColor" stroke-width="3" style="stroke-dasharray: 80 80;"/>
+      <g id="basketIcon" transform="translate(250, 180)">
+        <path d="M -12,-5 L -8,8 L 8,8 L 12,-5 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+        <circle cx="-4" cy="0" r="2" fill="currentColor"/>
+        <circle cx="4" cy="0" r="2" fill="currentColor"/>
+      </g>
+      <text id="labelBasketText" x="250" y="205" font-size="12" fill="currentColor" text-anchor="middle" opacity="0">Product</text>
+
+      <!-- Below-right: Documents icon + "Automatic Contracting" -->
+      <line id="branchBelowRight" x1="520" y1="100" x2="620" y2="160" stroke="currentColor" stroke-width="3" style="stroke-dasharray: 80 80;"/>
+      <g id="documentsIcon" transform="translate(650, 180)">
+        <rect x="-8" y="-8" width="12" height="16" fill="none" stroke="currentColor" stroke-width="1.5" rx="1"/>
+        <rect x="-2" y="-6" width="4" height="3" fill="currentColor"/>
+        <line x1="-6" y1="0" x2="4" y2="0" stroke="currentColor" stroke-width="1"/>
+        <line x1="-6" y1="4" x2="4" y2="4" stroke="currentColor" stroke-width="1"/>
+        <path d="M -4,6 L -2,8 L 4,2" fill="none" stroke="#00ff00" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text id="labelDocumentsText" x="650" y="205" font-size="12" fill="currentColor" text-anchor="middle" opacity="0">Contracts</text>
+    </g>
+
+    <!-- Problem icons (Screen 3) - initially hidden -->
+    <g id="problemIcons" opacity="0">
+      <!-- PDF icon -->
+      <g id="pdfIcon" transform="translate(300, -50)">
+        <rect x="-12" y="-14" width="24" height="28" fill="currentColor" stroke="currentColor" stroke-width="1" rx="2"/>
+        <text x="0" y="2" font-size="8" font-weight="bold" fill="white" text-anchor="middle">PDF</text>
+        <line x1="-20" y1="0" x2="20" y2="0" stroke="#ff0000" stroke-width="3" opacity="0" id="pdfStrike"/>
+      </g>
+      <!-- Email icon -->
+      <g id="emailIcon" transform="translate(400, -50)">
+        <rect x="-14" y="-10" width="28" height="20" fill="none" stroke="currentColor" stroke-width="2" rx="1"/>
+        <path d="M -14,-10 L 0,0 L 14,-10" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="-20" y1="0" x2="20" y2="0" stroke="#ff0000" stroke-width="3" opacity="0" id="emailStrike"/>
+      </g>
+      <!-- Keyboard icon -->
+      <g id="keyboardIcon" transform="translate(500, -50)">
+        <rect x="-16" y="-10" width="32" height="16" fill="none" stroke="currentColor" stroke-width="2" rx="2"/>
+        <circle cx="-8" cy="-4" r="2" fill="currentColor"/>
+        <circle cx="0" cy="-4" r="2" fill="currentColor"/>
+        <circle cx="8" cy="-4" r="2" fill="currentColor"/>
+        <line x1="-20" y1="0" x2="20" y2="0" stroke="#ff0000" stroke-width="3" opacity="0" id="keyboardStrike"/>
+      </g>
+    </g>
+  </svg>
+
+  <!-- ===== SECTION 1: WELCOME / BUSINESS BENEFITS ===== -->
+  <section id="screen-1" class="active bg-gradient-to-br from-white via-cyan-400 to-lime-400">
+    <div class="w-full max-w-5xl px-8 text-center">
+      <h1 class="text-6xl font-bold text-gray-900 mb-4">PXP LaunchPad</h1>
+      <p class="text-2xl font-light text-gray-700 mb-8">Merchant Onboarding Made Simple</p>
+      <p class="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
+        Streamline merchant onboarding with intelligent automation, flexible payments, and integrated risk management — all in one unified platform.
+      </p>
+
+      <!-- Benefits Grid (2x3) -->
+      <div class="grid grid-cols-3 gap-6">
+        <!-- Card 1: Zap -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Accelerated Time to Revenue</h3>
+          <p class="text-sm text-gray-600">Fast-track merchant activation and revenue generation.</p>
+        </div>
+
+        <!-- Card 2: Robot/CPU -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <line x1="9" y1="5" x2="9" y2="3"/>
+            <line x1="15" y1="5" x2="15" y2="3"/>
+            <line x1="9" y1="21" x2="9" y2="19"/>
+            <line x1="15" y1="21" x2="15" y2="19"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Intelligent Automation</h3>
+          <p class="text-sm text-gray-600">Reduce manual work with smart workflow automation.</p>
+        </div>
+
+        <!-- Card 3: Shopping Bag -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"/>
+            <circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Flexible Payments Ecosystem</h3>
+          <p class="text-sm text-gray-600">Support diverse payment methods and integrations.</p>
+        </div>
+
+        <!-- Card 4: Shield -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Integrated Risk & Compliance</h3>
+          <p class="text-sm text-gray-600">Built-in screening, underwriting, and regulatory checks.</p>
+        </div>
+
+        <!-- Card 5: File Text -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="13" x2="12" y2="17"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Automated Contracting</h3>
+          <p class="text-sm text-gray-600">Generate and sign contracts automatically.</p>
+        </div>
+
+        <!-- Card 6: Link -->
+        <div class="glass-card">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <h3 class="font-semibold text-gray-900 mb-2">Single Unified Onboarding</h3>
+          <p class="text-sm text-gray-600">One platform, all partners, seamless workflow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 2: THE WARM LEAD ===== -->
+  <section id="screen-2" class="bg-gray-200" data-theme="light">
+    <div class="w-full max-w-3xl px-8 text-center">
+      <p class="text-3xl font-light text-gray-800 mb-12">You warm the lead. We make the rest easy.</p>
+      <!-- Merchant → PXP flow is handled by continuity SVG layer -->
+    </div>
+  </section>
+
+  <!-- ===== SECTION 3: THE PROBLEM ===== -->
+  <section id="screen-3" class="bg-gray-300" data-theme="light">
+    <div class="w-full max-w-3xl px-8 text-center">
+      <p class="text-3xl font-light text-gray-800">But there are always 'things' in the way. PDFs. Emails. Manual entry.</p>
+      <!-- Continuity line persists with problem icons dropping down -->
+    </div>
+  </section>
+
+  <!-- ===== SECTION 4: THE SOLUTION ===== -->
+  <section id="screen-4" class="bg-gray-200" data-theme="light">
+    <div class="w-full max-w-3xl px-8 text-center">
+      <p class="text-3xl font-light text-gray-800">So we built LaunchPad. Less keystrokes. Less time. Less stress.</p>
+      <!-- Continuity line persists with solution branch lines -->
+    </div>
+  </section>
+
+  <!-- ===== SECTION 5: SYSTEM DIAGRAM ===== -->
+  <section id="screen-5" class="bg-gray-200" data-theme="light">
+    <div class="w-full max-w-7xl px-8">
+      <p class="text-2xl font-light text-gray-800 mb-8 text-center">LaunchPad is a big system. Partners, products, processes, merchants — one location.</p>
+      <!-- SVG Connectors Overlay -->
+      <svg id="diagramConnectors" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;">
+        <!-- Connectors will be drawn dynamically -->
+      </svg>
+      <div id="diagramContainer" class="flex gap-8 justify-start overflow-x-auto pb-8 relative z-10">
+        <!-- Column 1: Sales -->
+        <div class="flex-shrink-0 w-48">
+          <div class="text-center font-semibold text-gray-800 mb-6">Sales</div>
+          <div class="space-y-4">
+            <!-- Application Start -->
+            <div class="text-xs font-semibold text-gray-600 mb-2">Application Start</div>
+            <div class="diagram-node" data-highlight="false">Lead Info</div>
+            <div class="diagram-node" data-highlight="false">Screening</div>
+            <div class="diagram-node" data-highlight="true">Related Entities*</div>
+            <!-- Product Selection -->
+            <div class="text-xs font-semibold text-gray-600 mb-2 mt-4">Product Selection</div>
+            <div class="diagram-node" data-highlight="true">Product & Pricing*</div>
+            <!-- Tailored Questions -->
+            <div class="text-xs font-semibold text-gray-600 mb-2 mt-4">Tailored Questions</div>
+            <div class="diagram-node" data-highlight="true">Questions*</div>
+            <div class="diagram-node" data-highlight="true">Documents*</div>
+            <!-- Application End -->
+            <div class="text-xs font-semibold text-gray-600 mb-2 mt-4">Application End</div>
+            <div class="diagram-node" data-highlight="true">Generate Contract*</div>
+            <div class="diagram-node" data-highlight="false">AdobeSign Send</div>
+            <div class="diagram-node" data-highlight="false">Merchant Signs</div>
+          </div>
+        </div>
+
+        <!-- Column 2: Risk & Underwriting -->
+        <div class="flex-shrink-0 w-48">
+          <div class="text-center font-semibold text-gray-800 mb-6">Risk & Underwriting</div>
+          <div class="space-y-4">
+            <div class="diagram-node" data-highlight="false">Screening Checks</div>
+            <div class="diagram-node" data-highlight="false">Business Screening</div>
+            <div class="diagram-node" data-highlight="false">Scheme Screening</div>
+            <div class="diagram-node" data-highlight="false">Identity & PEPs</div>
+            <div class="diagram-node" data-highlight="false">Underwriting Review</div>
+            <div class="diagram-node diagram-decision" data-highlight="false">Approve/Decline</div>
+          </div>
+        </div>
+
+        <!-- Column 3: Onboarding -->
+        <div class="flex-shrink-0 w-48">
+          <div class="text-center font-semibold text-gray-800 mb-6">Onboarding</div>
+          <div class="space-y-4">
+            <div class="diagram-node" data-highlight="false">Payment Service</div>
+            <div class="text-xs font-semibold text-gray-600 mb-2">Unity Config</div>
+            <div class="diagram-node" data-highlight="false">Generate MIDs</div>
+            <div class="diagram-node" data-highlight="false">Merchant Config</div>
+            <div class="diagram-node" data-highlight="false">Products Config</div>
+            <div class="text-xs font-semibold text-gray-600 mb-2 mt-4">Setup</div>
+            <div class="diagram-node" data-highlight="false">Zendesk</div>
+            <div class="diagram-node" data-highlight="false">NetSuite</div>
+          </div>
+        </div>
+
+        <!-- Column 4: Fulfilment -->
+        <div class="flex-shrink-0 w-48">
+          <div class="text-center font-semibold text-gray-800 mb-6">Fulfilment</div>
+          <div class="space-y-4">
+            <div class="diagram-node" data-highlight="false">Product Fulfilment</div>
+            <div class="text-xs font-semibold text-gray-600 mb-2">CRM Integration</div>
+            <div class="diagram-node" data-highlight="false">Place Order → Dynamics</div>
+            <div class="diagram-node" data-highlight="false">Track Order → HubSpot</div>
+            <div class="diagram-node" data-highlight="false">External (Ac Pa)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 6: ZOOM (Shares Screen 5 DOM) ===== -->
+  <section id="screen-6" class="bg-gray-200" data-theme="light">
+    <div class="w-full max-w-6xl px-8">
+      <p class="text-2xl font-light text-gray-800 mb-8 text-center">These are your steps. Let's explore them in the demo.</p>
+      <div id="diagramContainer" class="w-full overflow-auto">
+        <!-- Same diagram as Screen 5 -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 7: OUTRO / DEMO TRANSITION ===== -->
+  <section id="screen-7" class="bg-gradient-to-br from-black via-cyan-500 to-purple-900">
+    <div class="w-full max-w-2xl px-8 text-center">
+      <h2 class="text-5xl font-light text-white mb-12">Any questions so far, or jump straight into the demo?</h2>
+      <button id="screen7Cta" class="bg-lime-400 text-black font-bold py-4 px-12 rounded-full text-xl hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-violet-500">
+        Open LaunchPad →
+      </button>
+    </div>
+  </section>
+
+  <!-- ===== MOBILE LANDSCAPE PROMPT ===== -->
+  <div class="mobile-prompt" id="mobilePrompt">
+    <div class="text-center">
+      <p>Please rotate to landscape for the best experience</p>
     </div>
   </div>
 
+  <!-- ===== JAVASCRIPT ===== -->
   <script>
-    const end = Date.now() + 12 * 60 * 60 * 1000;
+    // ===== GSAP CONFIGURATION =====
+    gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-    function pad(n) { return String(n).padStart(2, "0"); }
+    // ===== STATE MACHINE =====
+    let currentScreen = 0;
+    const totalScreens = 7;
+    let isAnimating = false;
+    const hasPlayed = {};
+    let zoomTimeline = null;
 
-    function tick() {
-      const remaining = end - Date.now();
-      if (remaining <= 0) {
-        document.getElementById("countdown").innerHTML = '<span class="done">Launching now</span>';
-        return;
+    // ===== NAVIGATION CONTROLLER =====
+    function goToScreen(index) {
+      if (isAnimating || index === currentScreen) return;
+      if (index < 0 || index >= totalScreens) return;
+
+      isAnimating = true;
+
+      const activeSection = document.querySelector('section.active');
+      const newSection = document.getElementById(`screen-${index + 1}`);
+
+      // Crossfade animation
+      const tl = gsap.timeline({
+        onComplete: () => {
+          isAnimating = false;
+          currentScreen = index;
+          updateUI();
+          playScreenAnimation(index);
+        }
+      });
+
+      // Handle Screen 6 zoom reverse if going back
+      if (currentScreen === 5 && index < 5) {
+        reverseScreen6Animation();
       }
-      const h = Math.floor(remaining / 3600000);
-      const m = Math.floor((remaining % 3600000) / 60000);
-      const s = Math.floor((remaining % 60000) / 1000);
-      document.getElementById("hours").textContent   = pad(h);
-      document.getElementById("minutes").textContent = pad(m);
-      document.getElementById("seconds").textContent = pad(s);
+
+      tl.to(activeSection, { opacity: 0, duration: 0.5 }, 0)
+        .to(newSection, { opacity: 1, duration: 0.5 }, 0);
+
+      activeSection.classList.remove('active');
+      newSection.classList.add('active');
     }
 
-    tick();
-    setInterval(tick, 1000);
+    function updateUI() {
+      // Update dots
+      const dots = document.querySelectorAll('.dot');
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === currentScreen);
+      });
+
+      // Update counter
+      document.getElementById('dotCounter').textContent = `${currentScreen + 1}/7`;
+
+      // Update continuity layer visibility
+      const continuityLayer = document.getElementById('continuityLayer');
+      if (currentScreen >= 1 && currentScreen <= 3) {
+        gsap.to(continuityLayer, { opacity: 1, duration: 0.3 });
+      } else {
+        gsap.to(continuityLayer, { opacity: 0, duration: 0.3 });
+      }
+    }
+
+    function playScreenAnimation(index) {
+      if (hasPlayed[index]) return;
+      hasPlayed[index] = true;
+
+      // Screen-specific animations
+      if (index === 0) playScreen1Animation();
+      else if (index === 1) playScreen2Animation();
+      else if (index === 2) playScreen3Animation();
+      else if (index === 3) playScreen4Animation();
+      else if (index === 4) playScreen5Animation();
+      else if (index === 5) playScreen6Animation();
+      else if (index === 6) playScreen7Animation();
+    }
+
+    function playScreen6Animation() {
+      if (zoomTimeline && zoomTimeline.isActive()) return;
+
+      const container = document.getElementById('diagramContainer');
+      const highlightedNodes = document.querySelectorAll('.diagram-node[data-highlight="true"]');
+      const nonHighlightedNodes = document.querySelectorAll('.diagram-node[data-highlight="false"]');
+      const tl = gsap.timeline();
+
+      if (!zoomTimeline) {
+        // Create zoom timeline (only once)
+        zoomTimeline = gsap.timeline({ paused: true });
+
+        // Blur and fade non-highlighted nodes
+        zoomTimeline.to(nonHighlightedNodes, {
+          filter: 'blur(4px)',
+          opacity: 0.15,
+          duration: 0.6
+        }, 0);
+
+        // Enhance glow on highlighted nodes
+        zoomTimeline.to(highlightedNodes, {
+          filter: 'drop-shadow(0 0 8px var(--violet))',
+          duration: 0.6
+        }, 0);
+
+        // Scale and translate container
+        zoomTimeline.to(container, {
+          transform: 'scale(1.4) translateX(-100px)',
+          duration: 0.6
+        }, 0);
+
+        // Add label
+        const label = document.createElement('div');
+        label.textContent = 'Your steps in the journey';
+        label.className = 'text-center text-gray-700 text-lg font-light mt-8';
+        label.style.opacity = '0';
+        container.parentElement.appendChild(label);
+        zoomTimeline.to(label, { opacity: 1, duration: 0.4 }, 0.4);
+      }
+
+      // Play the zoom timeline
+      zoomTimeline.play();
+    }
+
+    function reverseScreen6Animation() {
+      if (zoomTimeline) {
+        zoomTimeline.reverse();
+      }
+    }
+
+    function playScreen1Animation() {
+      const section = document.getElementById('screen-1');
+      const tl = gsap.timeline();
+
+      // Initial state: hidden
+      gsap.set(section.querySelector('h1'), { opacity: 0, y: 20 });
+      gsap.set(section.querySelector('p:nth-of-type(1)'), { opacity: 0, y: 20 });
+      gsap.set(section.querySelector('p:nth-of-type(2)'), { opacity: 0, y: 20 });
+      gsap.set(section.querySelectorAll('.glass-card'), { opacity: 0, y: 30 });
+
+      // Stagger animation: headline → subline → body → cards
+      tl.to(section.querySelector('h1'), { opacity: 1, y: 0, duration: 0.6 }, 0)
+        .to(section.querySelector('p:nth-of-type(1)'), { opacity: 1, y: 0, duration: 0.6 }, 0.2)
+        .to(section.querySelector('p:nth-of-type(2)'), { opacity: 1, y: 0, duration: 0.6 }, 0.4)
+        .to(section.querySelectorAll('.glass-card'), { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, 0.6);
+    }
+
+    function playScreen2Animation() {
+      const continuityLayer = document.getElementById('continuityLayer');
+      const merchantIcon = document.getElementById('merchantIcon');
+      const continuityArrow = document.getElementById('continuityArrow');
+      const pxpIcon = document.getElementById('pxpIcon');
+      const tl = gsap.timeline();
+
+      // Continuity layer fades in
+      tl.to(continuityLayer, { opacity: 1, duration: 0.3 }, 0);
+
+      // Merchant icon colour-shifts: Cyan → Lime over 2s
+      tl.to(merchantIcon, { attr: { fill: 'var(--lime)' }, duration: 2, delay: 0.3 }, 0);
+
+      // Arrow draws left-to-right via stroke-dashoffset
+      tl.to(continuityArrow, { strokeDashoffset: 0, duration: 0.8, delay: 0.3 }, 0);
+
+      // PXP icon fades in
+      tl.to(pxpIcon, { opacity: 1, duration: 0.5, delay: 0.8 }, 0);
+    }
+
+    function playScreen3Animation() {
+      const problemIcons = document.getElementById('problemIcons');
+      const pdfIcon = document.getElementById('pdfIcon');
+      const emailIcon = document.getElementById('emailIcon');
+      const keyboardIcon = document.getElementById('keyboardIcon');
+      const pdfStrike = document.getElementById('pdfStrike');
+      const emailStrike = document.getElementById('emailStrike');
+      const keyboardStrike = document.getElementById('keyboardStrike');
+      const tl = gsap.timeline();
+
+      // Set initial state (icons above line, hidden)
+      gsap.set([pdfIcon, emailIcon, keyboardIcon], { y: -100, opacity: 0 });
+      gsap.set([pdfStrike, emailStrike, keyboardStrike], { strokeDasharray: 40, strokeDashoffset: 40, opacity: 0 });
+
+      // Problem icons fade in
+      tl.to(problemIcons, { opacity: 1, duration: 0.2 }, 0);
+
+      // PDF icon drops with bounce
+      tl.to(pdfIcon, { y: 0, opacity: 1, duration: 0.6, ease: 'back.out' }, 0.1);
+      tl.to(pdfStrike, { strokeDashoffset: 0, opacity: 1, duration: 0.4 }, 0.8);
+
+      // Email icon drops (staggered)
+      tl.to(emailIcon, { y: 0, opacity: 1, duration: 0.6, ease: 'back.out' }, 0.35);
+      tl.to(emailStrike, { strokeDashoffset: 0, opacity: 1, duration: 0.4 }, 1.05);
+
+      // Keyboard icon drops (staggered)
+      tl.to(keyboardIcon, { y: 0, opacity: 1, duration: 0.6, ease: 'back.out' }, 0.6);
+      tl.to(keyboardStrike, { strokeDashoffset: 0, opacity: 1, duration: 0.4 }, 1.3);
+    }
+
+    function playScreen4Animation() {
+      const solutionBranches = document.getElementById('solutionBranches');
+      const problemIcons = document.getElementById('problemIcons');
+      const tl = gsap.timeline();
+
+      // Problem icons fade out
+      tl.to(problemIcons, { opacity: 0, duration: 0.3 }, 0);
+
+      // Solution branches fade in
+      tl.to(solutionBranches, { opacity: 1, duration: 0.3 }, 0.1);
+
+      // Branch lines draw outward (stroke-dashoffset)
+      const branches = ['branchAboveLeft', 'branchAboveRight', 'branchBelowLeft', 'branchBelowRight'];
+      branches.forEach((branchId, i) => {
+        const branch = document.getElementById(branchId);
+        tl.to(branch, { strokeDashoffset: 0, duration: 0.5 }, 0.4 + i * 0.3);
+      });
+
+      // Icons fade in as branches draw
+      tl.to(['clockIcon', 'checklistIcon', 'basketIcon', 'documentsIcon'].map(id => `#${id}`).join(', '),
+        { opacity: 1, duration: 0.4 }, 0.4);
+
+      // Labels fade in after branches
+      tl.to(['labelClockText', 'labelChecklistText', 'labelBasketText', 'labelDocumentsText'].map(id => `#${id}`).join(', '),
+        { opacity: 1, duration: 0.4 }, 1.5);
+    }
+
+    function playScreen5Animation() {
+      const nodes = document.querySelectorAll('.diagram-node');
+      const tl = gsap.timeline();
+
+      // Initial state: hidden
+      gsap.set(nodes, { opacity: 0, y: 20 });
+
+      // Fade in nodes column by column
+      let delay = 0;
+      nodes.forEach((node, i) => {
+        tl.to(node, { opacity: 1, y: 0, duration: 0.4 }, delay);
+        delay += 0.05;
+      });
+    }
+
+    function playScreen7Animation() {
+      const section = document.getElementById('screen-7');
+      const tl = gsap.timeline();
+
+      // Initial state: hidden
+      gsap.set(section.querySelector('h2'), { opacity: 0, y: 20 });
+      gsap.set(section.querySelector('button'), { opacity: 0, y: 20 });
+
+      // Fade in + slide up
+      tl.to(section.querySelector('h2'), { opacity: 1, y: 0, duration: 0.8 }, 0)
+        .to(section.querySelector('button'), { opacity: 1, y: 0, duration: 0.8 }, 0.4);
+    }
+
+    // ===== INPUT HANDLERS =====
+    const wheelDebounce = (() => {
+      let timeout;
+      return (direction) => {
+        if (timeout) return;
+        const newIndex = direction > 0 ? currentScreen + 1 : currentScreen - 1;
+        goToScreen(newIndex);
+        timeout = setTimeout(() => timeout = null, 800);
+      };
+    })();
+
+    document.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      wheelDebounce(e.deltaY);
+    }, { passive: false });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') goToScreen(currentScreen + 1);
+      if (e.key === 'ArrowLeft') goToScreen(currentScreen - 1);
+      if (e.key === 'Escape') goToScreen(0);
+    });
+
+    // ===== DOT NAVIGATION =====
+    function initDotNav() {
+      const dotNav = document.getElementById('dotNav');
+      for (let i = 0; i < totalScreens; i++) {
+        const dot = document.createElement('div');
+        dot.className = `dot ${i === 0 ? 'active' : ''}`;
+        dot.addEventListener('click', () => goToScreen(i));
+        dotNav.appendChild(dot);
+      }
+    }
+
+    // ===== PREV/NEXT BUTTONS =====
+    document.getElementById('prevBtn').addEventListener('click', () => goToScreen(currentScreen - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => goToScreen(currentScreen + 1));
+
+    // ===== SCREEN 7 CTA BUTTON =====
+    document.getElementById('screen7Cta').addEventListener('click', () => {
+      window.open('https://www.partner.pxpfinancial.com', '_blank');
+    });
+
+    // ===== THEME TOGGLE =====
+    function initThemeToggle() {
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+      const html = document.documentElement;
+
+      const savedTheme = localStorage.getItem('launchpad-theme') ||
+                        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+      html.setAttribute('data-theme', savedTheme);
+      themeIcon.textContent = savedTheme === 'light' ? '🌙' : '☀️';
+
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        html.setAttribute('data-theme', newTheme);
+        themeIcon.textContent = newTheme === 'light' ? '🌙' : '☀️';
+        localStorage.setItem('launchpad-theme', newTheme);
+      });
+    }
+
+    // ===== PARALLAX ON MOUSE MOVE (Screens 2-4) =====
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+      if (currentScreen >= 1 && currentScreen <= 3) {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const offsetX = (mouseX - centerX) * 0.02; // Subtle: ±5-10px
+        const offsetY = (mouseY - centerY) * 0.02;
+
+        const merchantIcon = document.getElementById('merchantIcon');
+        const pxpIcon = document.getElementById('pxpIcon');
+
+        if (merchantIcon) gsap.to(merchantIcon, { attr: { transform: `translate(50, 100) translate(${offsetX}, ${offsetY})` }, duration: 0.1 });
+        if (pxpIcon) gsap.to(pxpIcon, { attr: { transform: `translate(750, 100) translate(${offsetX}, ${offsetY})` }, duration: 0.1 });
+      }
+    });
+
+    // ===== MOBILE LANDSCAPE DETECTION =====
+    function checkOrientation() {
+      const mobilePrompt = document.getElementById('mobilePrompt');
+      const isPortrait = window.innerHeight > window.innerWidth;
+      const isMobile = window.innerWidth < 1024;
+
+      if (isMobile && isPortrait) {
+        mobilePrompt.classList.add('show');
+      } else {
+        mobilePrompt.classList.remove('show');
+      }
+    }
+
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+    // ===== INITIALIZATION =====
+    document.addEventListener('DOMContentLoaded', () => {
+      initDotNav();
+      initThemeToggle();
+      checkOrientation();
+      updateUI();
+    });
   </script>
 </body>
 </html>
