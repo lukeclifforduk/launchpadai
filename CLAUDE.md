@@ -12,6 +12,20 @@ This file is read by Claude at the start of every session. Keep it up to date as
 
 ---
 
+## Separate Project: `functional/`
+
+The `functional/` directory contains a **completely independent web application** — do NOT confuse it with the launchpad presentation in `index.html`.
+
+**What it is:**
+- A forever-running 2D train simulation (top-down pixel-art view)
+- Canvas-based, vanilla JavaScript
+- Accessible at `https://lukeclifforduk.github.io/launchpadai/functional/`
+- Lives at `/functional/index.html`
+
+**Critical rule:** Never share code, assets, styles, or scripts between the root `index.html` (launchpad presentation) and `functional/index.html` (train sim). They are separate projects that happen to live in the same repo.
+
+---
+
 ## Tech Stack
 
 > Decisions should be made during planning and recorded here.
