@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Train Sim — Forever Running</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #2a2520;
+      color: #e8e0d5;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #canvas {
+      flex: 1;
+      background: #3d3a36;
+      display: block;
+    }
+
+    #sidebar {
+      width: 220px;
+      background: #1a1815;
+      border-left: 2px solid #5a4a3a;
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    #sidebar h3 {
+      margin-top: 12px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #c4b5a0;
+      border-bottom: 1px solid #4a3a2a;
+      padding-bottom: 4px;
+    }
+
+    #sidebar h3:first-child {
+      margin-top: 0;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      color: #a8987f;
+    }
+
+    .stat-value {
+      color: #e8e0d5;
+      font-weight: bold;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #2a2520;
+      border: 1px solid #4a3a2a;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #8b7355;
+      transition: width 0.5s ease;
+    }
+
+    .worker-list {
+      font-size: 10px;
+      margin-top: 6px;
+    }
+
+    .worker-item {
+      margin-bottom: 3px;
+      color: #c4b5a0;
+    }
+
+    .worker-id {
+      display: inline-block;
+      width: 20px;
+      font-weight: bold;
+    }
+
+    .worker-status {
+      color: #a8987f;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="sidebar">
+    <h3>TRAIN</h3>
+    <div class="stat-row">
+      <span class="stat-label">Status:</span>
+      <span class="stat-value" id="trainStatus">Loading</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Cargo:</span>
+      <span class="stat-value" id="trainCargo">0/8</span>
+    </div>
+
+    <h3>TOP QUARRY</h3>
+    <div class="stat-row">
+      <span class="stat-label">Blocks:</span>
+      <span class="stat-value" id="topQuarryBlocks">0/96</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="topQuarryBar" style="width: 100%;"></div>
+    </div>
+
+    <h3>BOTTOM QUARRY</h3>
+    <div class="stat-row">
+      <span class="stat-label">Blocks:</span>
+      <span class="stat-value" id="bottomQuarryBlocks">0/96</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="bottomQuarryBar" style="width: 0%;"></div>
+    </div>
+
+    <h3>WORKERS (TOP)</h3>
+    <div class="worker-list" id="topWorkersList"></div>
+
+    <h3>WORKERS (BOTTOM)</h3>
+    <div class="worker-list" id="bottomWorkersList"></div>
+  </div>
+
+  <script>
+    // ===== COLOUR PALETTE (Earthy/Natural) =====
+    const COLOURS = {
+      // Terrain
+      grass: '#5a7a3a',
+      dirt: '#6b6b4a',
+      gravel: '#7a7a62',
+
+      // Quarry blocks (height-based)
+      blockEmpty: '#8a8a72',
+      blockLow: '#9a9a7a',
+      blockMid: '#8b7355',
+      blockHigh: '#6a5a45',
+      blockVeryHigh: '#4a3a2a',
+
+      // Infrastructure
+      stationBg: '#a39075',
+      craneMetal: '#7a7a7a',
+      trackWood: '#5a4a3a',
+      roadDirt: '#7a6a52',
+
+      // Train
+      trainBody: '#4a5a6a',
+      trainWheel: '#3a3a3a',
+
+      // Truck
+      truckBody: '#7a6a4a',
+      truckWheel: '#2a2a2a',
+    };
+
+    // ===== GAME STATE =====
+    const gameState = {
+      // Quarries (grid-based)
+      topQuarry: [],
+      bottomQuarry: [],
+
+      // Entities
+      train: {
+        state: 'LOADING_AT_TOP', // LOADING_AT_TOP, DEPARTING, EN_ROUTE_TO_BOTTOM, UNLOADING_AT_BOTTOM, EN_ROUTE_TO_TOP
+        cargo: 0,
+        maxCargo: 8,
+        x: 0,
+        y: 0,
+        progress: 0, // 0-1 for movement between stations
+      },
+
+      topCrane: {
+        blocks: 0,
+        maxStack: 8,
+      },
+      bottomCrane: {
+        blocks: 0,
+        maxStack: 8,
+      },
+
+      trucks: [], // Array of truck objects
+
+      // Flow direction
+      isReversed: false,
+
+      // Timing
+      frameCount: 0,
+      speed: 1.0, // Fixed art-piece pace
+    };
+
+    // ===== CANVAS & RENDERING =====
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false; // Pixel art style
+
+    function resizeCanvas() {
+      const containerWidth = canvas.parentElement.clientWidth;
+      const containerHeight = window.innerHeight;
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // ===== INITIALIZATION =====
+    function initializeQuarries() {
+      const QUARRY_WIDTH = 12;
+      const QUARRY_HEIGHT = 8;
+
+      // Top quarry: starts FULL (height 3-5)
+      gameState.topQuarry = [];
+      for (let x = 0; x < QUARRY_WIDTH; x++) {
+        for (let y = 0; y < QUARRY_HEIGHT; y++) {
+          const height = 3 + Math.floor(Math.random() * 3); // 3-5
+          gameState.topQuarry.push({ x, y, height });
+        }
+      }
+
+      // Bottom quarry: starts EMPTY (height 0)
+      gameState.bottomQuarry = [];
+      for (let x = 0; x < QUARRY_WIDTH; x++) {
+        for (let y = 0; y < QUARRY_HEIGHT; y++) {
+          gameState.bottomQuarry.push({ x, y, height: 0 });
+        }
+      }
+    }
+
+    function initializeTrucks() {
+      gameState.trucks = [];
+
+      // Top station trucks (5)
+      for (let i = 0; i < 5; i++) {
+        gameState.trucks.push({
+          id: 'T' + (i + 1),
+          station: 'top',
+          state: 'IDLE_AT_STATION',
+          x: 0,
+          y: 0,
+          hasBlock: false,
+        });
+      }
+
+      // Bottom station trucks (5)
+      for (let i = 0; i < 5; i++) {
+        gameState.trucks.push({
+          id: 'B' + (i + 1),
+          station: 'bottom',
+          state: 'IDLE_AT_STATION',
+          x: 0,
+          y: 0,
+          hasBlock: false,
+        });
+      }
+    }
+
+    // ===== GAME LOOP =====
+    function update() {
+      gameState.frameCount++;
+
+      // TODO: Update train state
+      // TODO: Update truck states
+      // TODO: Update crane logic
+      // TODO: Check for reversal condition
+    }
+
+    function render() {
+      // Clear canvas
+      ctx.fillStyle = COLOURS.grass;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // TODO: Render terrain
+      // TODO: Render track
+      // TODO: Render quarries
+      // TODO: Render stations & cranes
+      // TODO: Render train
+      // TODO: Render trucks
+      // TODO: Render crossing animations
+    }
+
+    function updateUI() {
+      // Update train status
+      document.getElementById('trainStatus').textContent = gameState.train.state.replace(/_/g, ' ');
+      document.getElementById('trainCargo').textContent = gameState.train.cargo + '/' + gameState.train.maxCargo;
+
+      // Update quarry blocks
+      const topBlockCount = gameState.topQuarry.reduce((sum, block) => sum + block.height, 0);
+      const bottomBlockCount = gameState.bottomQuarry.reduce((sum, block) => sum + block.height, 0);
+      const maxBlockCount = 96;
+
+      document.getElementById('topQuarryBlocks').textContent = topBlockCount + '/' + maxBlockCount;
+      document.getElementById('topQuarryBar').style.width = (topBlockCount / maxBlockCount * 100) + '%';
+
+      document.getElementById('bottomQuarryBlocks').textContent = bottomBlockCount + '/' + maxBlockCount;
+      document.getElementById('bottomQuarryBar').style.width = (bottomBlockCount / maxBlockCount * 100) + '%';
+
+      // Update worker lists
+      const topWorkers = gameState.trucks.filter(t => t.station === 'top');
+      const bottomWorkers = gameState.trucks.filter(t => t.station === 'bottom');
+
+      document.getElementById('topWorkersList').innerHTML = topWorkers
+        .map(w => `<div class="worker-item"><span class="worker-id">${w.id}</span> <span class="worker-status">${w.state.toLowerCase()}</span></div>`)
+        .join('');
+
+      document.getElementById('bottomWorkersList').innerHTML = bottomWorkers
+        .map(w => `<div class="worker-item"><span class="worker-id">${w.id}</span> <span class="worker-status">${w.state.toLowerCase()}</span></div>`)
+        .join('');
+    }
+
+    function gameLoop() {
+      update();
+      render();
+      updateUI();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ===== START =====
+    initializeQuarries();
+    initializeTrucks();
+    gameLoop();
+  </script>
+</body>
+</html>
