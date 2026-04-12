@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Train Sim — Forever Running</title>
+  <title>Train Sim — Forever Running (Enhanced)</title>
   <style>
     * {
       margin: 0;
@@ -13,7 +13,7 @@
 
     body {
       font-family: 'Courier New', monospace;
-      background: #2a2520;
+      background: #1a1815;
       color: #e8e0d5;
       overflow: hidden;
       display: flex;
@@ -21,247 +21,393 @@
 
     #canvas {
       flex: 1;
-      background: #3d3a36;
+      background: #2d2a26;
       display: block;
     }
 
     #sidebar {
-      width: 220px;
-      background: #1a1815;
-      border-left: 2px solid #5a4a3a;
-      padding: 16px;
+      width: 280px;
+      background: #0f0d0a;
+      border-left: 3px solid #5a4a3a;
+      padding: 12px;
       overflow-y: auto;
-      font-size: 11px;
-      line-height: 1.6;
+      font-size: 10px;
+      line-height: 1.5;
+      color: #d8d0c5;
     }
 
-    #sidebar h3 {
-      margin-top: 12px;
-      margin-bottom: 6px;
-      font-size: 12px;
+    #sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #sidebar::-webkit-scrollbar-track {
+      background: #1a1815;
+    }
+
+    #sidebar::-webkit-scrollbar-thumb {
+      background: #4a3a2a;
+      border-radius: 3px;
+    }
+
+    .section {
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #3a2a1a;
+    }
+
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section h3 {
+      font-size: 11px;
       font-weight: bold;
       color: #c4b5a0;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       border-bottom: 1px solid #4a3a2a;
-      padding-bottom: 4px;
-    }
-
-    #sidebar h3:first-child {
-      margin-top: 0;
+      padding-bottom: 3px;
     }
 
     .stat-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      font-size: 9px;
     }
 
     .stat-label {
       color: #a8987f;
+      flex: 1;
     }
 
     .stat-value {
-      color: #e8e0d5;
+      color: #f0e8d8;
       font-weight: bold;
+      text-align: right;
+      flex: 0 0 60px;
+    }
+
+    .stat-value.warning {
+      color: #d4a574;
+    }
+
+    .stat-value.critical {
+      color: #c85a5a;
+    }
+
+    .stat-value.good {
+      color: #8ab885;
     }
 
     .progress-bar {
       width: 100%;
-      height: 8px;
-      background: #2a2520;
-      border: 1px solid #4a3a2a;
-      margin-top: 4px;
+      height: 6px;
+      background: #1a1815;
+      border: 1px solid #3a2a1a;
+      margin-top: 2px;
       overflow: hidden;
+      border-radius: 1px;
     }
 
     .progress-fill {
       height: 100%;
-      background: #8b7355;
-      transition: width 0.5s ease;
+      background: linear-gradient(90deg, #8b7355 0%, #a89070 100%);
+      transition: width 0.3s ease;
+      border-radius: 1px;
     }
 
     .worker-list {
-      font-size: 10px;
-      margin-top: 6px;
+      font-size: 8px;
+      margin-top: 4px;
     }
 
     .worker-item {
-      margin-bottom: 3px;
-      color: #c4b5a0;
+      margin-bottom: 2px;
+      color: #b8a895;
+      display: flex;
+      justify-content: space-between;
+      padding: 1px 2px;
+      background: #1a1815;
+      border-radius: 1px;
     }
 
     .worker-id {
-      display: inline-block;
-      width: 20px;
       font-weight: bold;
+      color: #c4b5a0;
+      min-width: 20px;
     }
 
     .worker-status {
-      color: #a8987f;
-      font-size: 9px;
+      color: #8a7a65;
+      font-size: 7px;
+      flex: 1;
+      text-align: right;
+    }
+
+    .metrics-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8px;
+      margin-bottom: 2px;
+      padding: 2px;
+      background: #1a1815;
+      border-radius: 1px;
+    }
+
+    .metrics-label {
+      color: #8a7a65;
+    }
+
+    .metrics-value {
+      color: #d4b896;
+      font-weight: bold;
+    }
+
+    .alert {
+      padding: 3px;
+      margin-top: 2px;
+      background: #3a2a1a;
+      border-left: 2px solid #c85a5a;
+      font-size: 8px;
+      color: #f0a8a8;
+      border-radius: 1px;
+    }
+
+    .queue-indicator {
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 2px;
+      margin-right: 2px;
+      background: #8b7355;
+    }
+
+    .queue-indicator.active {
+      background: #d4a574;
+      animation: pulse 0.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
   <div id="sidebar">
-    <h3>TRAIN</h3>
-    <div class="stat-row">
-      <span class="stat-label">Status:</span>
-      <span class="stat-value" id="trainStatus">Loading</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Cargo:</span>
-      <span class="stat-value" id="trainCargo">0/8</span>
-    </div>
-
-    <h3>TOP QUARRY</h3>
-    <div class="stat-row">
-      <span class="stat-label">Blocks:</span>
-      <span class="stat-value" id="topQuarryBlocks">0/96</span>
-    </div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="topQuarryBar" style="width: 100%;"></div>
-    </div>
-
-    <h3>BOTTOM QUARRY</h3>
-    <div class="stat-row">
-      <span class="stat-label">Blocks:</span>
-      <span class="stat-value" id="bottomQuarryBlocks">0/96</span>
-    </div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="bottomQuarryBar" style="width: 0%;"></div>
+    <!-- Train Section -->
+    <div class="section">
+      <h3>🚂 Train</h3>
+      <div class="stat-row">
+        <span class="stat-label">Status:</span>
+        <span class="stat-value" id="trainStatus">LOADING</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Cargo:</span>
+        <span class="stat-value" id="trainCargo">0/8</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Speed:</span>
+        <span class="stat-value" id="trainSpeed">0%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">ETA:</span>
+        <span class="stat-value" id="trainETA">--</span>
+      </div>
     </div>
 
-    <h3>WORKERS (TOP)</h3>
-    <div class="worker-list" id="topWorkersList"></div>
+    <!-- Top Quarry Section -->
+    <div class="section">
+      <h3>⛏️ Top Quarry</h3>
+      <div class="stat-row">
+        <span class="stat-label">Blocks:</span>
+        <span class="stat-value" id="topQuarryBlocks">0/384</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="topQuarryBar" style="width: 100%;"></div>
+      </div>
+      <div class="stat-row" style="margin-top: 3px; font-size: 8px;">
+        <span class="stat-label">Rate:</span>
+        <span class="stat-value" id="topQuarryRate">0/min</span>
+      </div>
+    </div>
 
-    <h3>WORKERS (BOTTOM)</h3>
-    <div class="worker-list" id="bottomWorkersList"></div>
+    <!-- Top Crane Section -->
+    <div class="section">
+      <h3>🏗️ Top Crane</h3>
+      <div class="stat-row">
+        <span class="stat-label">Stacked:</span>
+        <span class="stat-value" id="topCraneBlocks">0/8</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="topCraneBar" style="width: 0%;"></div>
+      </div>
+      <div class="stat-row" style="margin-top: 3px; font-size: 8px;">
+        <span class="stat-label">Queue:</span>
+        <span class="stat-value" id="topCraneQueue">0</span>
+      </div>
+    </div>
+
+    <!-- Top Workers Section -->
+    <div class="section">
+      <h3>👷 Workers (Top)</h3>
+      <div class="worker-list" id="topWorkersList"></div>
+    </div>
+
+    <!-- Bottom Quarry Section -->
+    <div class="section">
+      <h3>⛏️ Bottom Quarry</h3>
+      <div class="stat-row">
+        <span class="stat-label">Blocks:</span>
+        <span class="stat-value" id="bottomQuarryBlocks">0/384</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="bottomQuarryBar" style="width: 0%;"></div>
+      </div>
+      <div class="stat-row" style="margin-top: 3px; font-size: 8px;">
+        <span class="stat-label">Rate:</span>
+        <span class="stat-value" id="bottomQuarryRate">0/min</span>
+      </div>
+    </div>
+
+    <!-- Bottom Crane Section -->
+    <div class="section">
+      <h3>🏗️ Bottom Crane</h3>
+      <div class="stat-row">
+        <span class="stat-label">Stacked:</span>
+        <span class="stat-value" id="bottomCraneBlocks">0/8</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="bottomCraneBar" style="width: 0%;"></div>
+      </div>
+      <div class="stat-row" style="margin-top: 3px; font-size: 8px;">
+        <span class="stat-label">Queue:</span>
+        <span class="stat-value" id="bottomCraneQueue">0</span>
+      </div>
+    </div>
+
+    <!-- Bottom Workers Section -->
+    <div class="section">
+      <h3>👷 Workers (Bottom)</h3>
+      <div class="worker-list" id="bottomWorkersList"></div>
+    </div>
+
+    <!-- System Metrics -->
+    <div class="section">
+      <h3>📊 Metrics</h3>
+      <div class="metrics-row">
+        <span class="metrics-label">Blocks Moved:</span>
+        <span class="metrics-value" id="totalBlocksMoved">0</span>
+      </div>
+      <div class="metrics-row">
+        <span class="metrics-label">Throughput:</span>
+        <span class="metrics-value" id="throughputRate">0/min</span>
+      </div>
+      <div class="metrics-row">
+        <span class="metrics-label">Efficiency:</span>
+        <span class="metrics-value" id="efficiency">0%</span>
+      </div>
+      <div class="metrics-row">
+        <span class="metrics-label">Reversals:</span>
+        <span class="metrics-value" id="reversalCount">0</span>
+      </div>
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="section" id="alertsSection" style="display: none;">
+      <h3>⚠️ Alerts</h3>
+      <div id="alertsList"></div>
+    </div>
   </div>
 
   <script>
-    // ===== COLOUR PALETTE (Earthy/Natural) =====
-    const COLOURS = {
-      // Terrain
-      grass: '#5a7a3a',
-      dirt: '#6b6b4a',
-      gravel: '#7a7a62',
-
-      // Quarry blocks (height-based)
-      blockEmpty: '#8a8a72',
-      blockLow: '#9a9a7a',
-      blockMid: '#8b7355',
-      blockHigh: '#6a5a45',
-      blockVeryHigh: '#4a3a2a',
-
-      // Infrastructure
-      stationBg: '#a39075',
-      craneMetal: '#7a7a7a',
-      trackWood: '#5a4a3a',
-      roadDirt: '#7a6a52',
-
-      // Train
-      trainBody: '#4a5a6a',
-      trainWheel: '#3a3a3a',
-
-      // Truck
-      truckBody: '#7a6a4a',
-      truckWheel: '#2a2a2a',
+    // ===== CONFIGURATION & CONSTANTS =====
+    const CONFIG = {
+      QUARRY_WIDTH: 24,
+      QUARRY_HEIGHT: 16,
+      BLOCK_SIZE: 10,
+      MAX_TRAIN_CARGO: 8,
+      MAX_CRANE_STACK: 8,
+      TRUCK_COUNT_PER_STATION: 5,
+      BLOCKS_PER_TRUCK: 1,
+      BLOCK_HEIGHT_LEVELS: 8,
     };
 
-    // ===== GAME STATE =====
+    // ===== ENHANCED COLOR PALETTE (20+ colors) =====
+    const COLOURS = {
+      grass: '#4a6a3a',
+      dirt: '#5a5a4a',
+      gravel: '#6a6a5a',
+      canvas_bg: '#2d2a26',
+      blockEmpty: '#7a7a6a',
+      blockLevel1: '#8a8a7a',
+      blockLevel2: '#9a9a85',
+      blockLevel3: '#8b8365',
+      blockLevel4: '#8b7355',
+      blockLevel5: '#7a6a45',
+      blockLevel6: '#6a5a35',
+      blockLevel7: '#5a4a25',
+      blockLevel8: '#4a3a15',
+      stationBg: '#b3a085',
+      stationPlatform: '#9a8a75',
+      craneMetal: '#6a6a6a',
+      craneArm: '#8a8a8a',
+      trackWood: '#4a3a2a',
+      trackSteel: '#3a3a3a',
+      roadDirt: '#7a6a52',
+      roadGravel: '#8a7a62',
+      trainBody: '#3a4a5a',
+      trainDoor: '#2a3a4a',
+      trainWheel: '#2a2a2a',
+      truckBody: '#6a5a4a',
+      truckCab: '#7a6a5a',
+      truckWheel: '#1a1a1a',
+      accent1: '#c4a574',
+      accent2: '#d4a574',
+      accent3: '#e4b584',
+      warning: '#d4a574',
+      critical: '#c85a5a',
+      good: '#8ab885',
+    };
+
+    // ===== GAME STATE (EXPANDED) =====
     const gameState = {
-      // Quarries (grid-based)
       topQuarry: [],
       bottomQuarry: [],
-
-      // Entities
       train: {
-        state: 'LOADING_AT_TOP', // LOADING_AT_TOP, DEPARTING, EN_ROUTE_TO_BOTTOM, UNLOADING_AT_BOTTOM, EN_ROUTE_TO_TOP
+        state: 'LOADING_AT_TOP',
         cargo: 0,
-        maxCargo: 8,
+        maxCargo: CONFIG.MAX_TRAIN_CARGO,
         x: 0,
         y: 0,
-        progress: 0, // 0-1 for movement between stations
+        progress: 0,
+        speed: 0,
+        haltCounter: 0,
+        haltDuration: 0,
       },
-
-      topCrane: {
-        blocks: 0,
-        maxStack: 8,
+      topCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK, queue: [] },
+      bottomCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK, queue: [] },
+      trucks: [],
+      stats: {
+        blocksMoved: 0,
+        reversalCount: 0,
+        lastQuarryRates: { top: 0, bottom: 0 },
       },
-      bottomCrane: {
-        blocks: 0,
-        maxStack: 8,
-      },
-
-      trucks: [], // Array of truck objects
-
-      // Flow direction
       isReversed: false,
-
-      // Timing
       frameCount: 0,
-      speed: 1.0, // Fixed art-piece pace
       uiUpdateCounter: 0,
+      lastTopQuarryCount: 0,
+      lastBottomQuarryCount: 0,
     };
 
-    // ===== PATHFINDING HELPERS =====
-    // Define road paths from stations to quarries
-    const roadPaths = {
-      topStationToTopQuarry: [], // will be populated during init
-      topQuarryToTopStation: [],
-      bottomStationToBottomQuarry: [],
-      bottomQuarryToBottomStation: [],
-      topStationToCrane: [], // short path to crane at station
-      bottomStationToCrane: [],
-    };
-
-    function buildRoadPaths() {
-      // Simple linear paths for now
-      const topStationX = MAP.topStationX;
-      const topStationY = MAP.topStationY;
-      const topQuarryX = MAP.topQuarryX;
-      const topQuarryY = MAP.topQuarryY + MAP.quarryGridHeight * MAP.blockSize / 2;
-
-      // Top station → top quarry (horizontal then vertical)
-      roadPaths.topStationToTopQuarry = [];
-      for (let x = topStationX; x < topQuarryX + 60; x += 4) {
-        roadPaths.topStationToTopQuarry.push({ x, y: topStationY });
-      }
-      for (let y = topStationY; y > topQuarryY; y -= 4) {
-        roadPaths.topStationToTopQuarry.push({ x: topQuarryX + 60, y });
-      }
-
-      // Reverse paths
-      roadPaths.topQuarryToTopStation = [...roadPaths.topStationToTopQuarry].reverse();
-
-      // Similar for bottom
-      const bottomStationX = MAP.bottomStationX;
-      const bottomStationY = MAP.bottomStationY;
-      const bottomQuarryX = MAP.bottomQuarryX;
-      const bottomQuarryY = MAP.bottomQuarryY + MAP.quarryGridHeight * MAP.blockSize / 2;
-
-      roadPaths.bottomStationToBottomQuarry = [];
-      for (let x = bottomStationX; x < bottomQuarryX + 60; x += 4) {
-        roadPaths.bottomStationToBottomQuarry.push({ x, y: bottomStationY });
-      }
-      for (let y = bottomStationY; y < bottomQuarryY; y += 4) {
-        roadPaths.bottomStationToBottomQuarry.push({ x: bottomQuarryX + 60, y });
-      }
-
-      roadPaths.bottomQuarryToBottomStation = [...roadPaths.bottomStationToBottomQuarry].reverse();
-
-      // Crane paths (short)
-      roadPaths.topStationToCrane = [{ x: topStationX + 40, y: topStationY }, { x: topStationX + 40, y: topStationY - 30 }];
-      roadPaths.bottomStationToCrane = [{ x: bottomStationX + 40, y: bottomStationY }, { x: bottomStationX + 40, y: bottomStationY + 30 }];
-    }
-
-    // ===== MAP LAYOUT =====
+    // ===== MAP LAYOUT (24x16 QUARRIES) =====
     const MAP = {
-      quarryGridWidth: 12,
-      quarryGridHeight: 8,
-      blockSize: 12, // pixels per block
-      // Computed at resize
+      quarryGridWidth: CONFIG.QUARRY_WIDTH,
+      quarryGridHeight: CONFIG.QUARRY_HEIGHT,
+      blockSize: CONFIG.BLOCK_SIZE,
       topQuarryX: 0,
       topQuarryY: 0,
       bottomQuarryX: 0,
@@ -270,43 +416,56 @@
       topStationY: 0,
       bottomStationX: 0,
       bottomStationY: 0,
+      topCraneX: 0,
+      topCraneY: 0,
+      bottomCraneX: 0,
+      bottomCraneY: 0,
       trackCenterY: 0,
+      trackCenterX: 0,
     };
 
-    // ===== CANVAS & RENDERING =====
+    // ===== ROAD PATHS (100+ waypoints) =====
+    const roadPaths = {
+      topStationToTopQuarry: [],
+      topQuarryToTopStation: [],
+      bottomStationToBottomQuarry: [],
+      bottomQuarryToBottomStation: [],
+    };
+
+    // ===== CANVAS SETUP =====
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false; // Pixel art style
+    ctx.imageSmoothingEnabled = false;
 
     function resizeCanvas() {
-      const containerWidth = canvas.parentElement.clientWidth;
+      const sidebarWidth = 280;
+      const containerWidth = window.innerWidth - sidebarWidth;
       const containerHeight = window.innerHeight;
       canvas.width = containerWidth;
       canvas.height = containerHeight;
 
-      // Compute layout based on canvas size
-      const quarryWidth = MAP.quarryGridWidth * MAP.blockSize;
-      const quarryHeight = MAP.quarryGridHeight * MAP.blockSize;
-      const usableWidth = canvas.width - 220; // minus sidebar
+      const quarryWidth = CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE;
+      const quarryHeight = CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE;
 
-      // Top quarry: top-left area (40% of height)
       MAP.topQuarryX = 20;
       MAP.topQuarryY = 20;
-
-      // Top station: below top quarry
       MAP.topStationX = 50;
-      MAP.topStationY = MAP.topQuarryY + quarryHeight + 20;
+      MAP.topStationY = MAP.topQuarryY + quarryHeight + 30;
+      MAP.topCraneX = MAP.topStationX + 80;
+      MAP.topCraneY = MAP.topStationY - 50;
 
-      // Track center
       MAP.trackCenterY = canvas.height * 0.5;
+      MAP.trackCenterX = canvas.width * 0.4;
 
-      // Bottom station: above bottom quarry
       MAP.bottomStationX = 50;
       MAP.bottomStationY = MAP.trackCenterY + 80;
+      MAP.bottomCraneX = MAP.bottomStationX + 80;
+      MAP.bottomCraneY = MAP.bottomStationY + 50;
 
-      // Bottom quarry: bottom-left area
       MAP.bottomQuarryX = 20;
       MAP.bottomQuarryY = canvas.height - quarryHeight - 20;
+
+      buildRoadPaths();
     }
 
     resizeCanvas();
@@ -314,63 +473,143 @@
 
     // ===== INITIALIZATION =====
     function initializeQuarries() {
-      const QUARRY_WIDTH = 12;
-      const QUARRY_HEIGHT = 8;
-
-      // Top quarry: starts FULL (height 3-5)
       gameState.topQuarry = [];
-      for (let x = 0; x < QUARRY_WIDTH; x++) {
-        for (let y = 0; y < QUARRY_HEIGHT; y++) {
-          const height = 3 + Math.floor(Math.random() * 3); // 3-5
-          gameState.topQuarry.push({ x, y, height });
+      for (let x = 0; x < CONFIG.QUARRY_WIDTH; x++) {
+        for (let y = 0; y < CONFIG.QUARRY_HEIGHT; y++) {
+          const height = 4 + Math.floor(Math.random() * 3);
+          gameState.topQuarry.push({ x, y, height, type: 'ore', age: 0 });
         }
       }
 
-      // Bottom quarry: starts EMPTY (height 0)
       gameState.bottomQuarry = [];
-      for (let x = 0; x < QUARRY_WIDTH; x++) {
-        for (let y = 0; y < QUARRY_HEIGHT; y++) {
-          gameState.bottomQuarry.push({ x, y, height: 0 });
+      for (let x = 0; x < CONFIG.QUARRY_WIDTH; x++) {
+        for (let y = 0; y < CONFIG.QUARRY_HEIGHT; y++) {
+          gameState.bottomQuarry.push({ x, y, height: 0, type: 'ore', age: 0 });
         }
       }
+
+      gameState.lastTopQuarryCount = getTotalQuarryHeight(gameState.topQuarry);
+      gameState.lastBottomQuarryCount = getTotalQuarryHeight(gameState.bottomQuarry);
     }
 
     function initializeTrucks() {
       gameState.trucks = [];
 
-      // Top station trucks (5)
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
         gameState.trucks.push({
           id: 'T' + (i + 1),
           station: 'top',
           state: 'IDLE_AT_STATION',
-          x: MAP.topStationX + i * 20,
+          x: MAP.topStationX + i * 25,
           y: MAP.topStationY,
-          hasBlock: false,
+          blocks: 0,
           pathIndex: 0,
-          waitTimer: Math.random() * 30,
+          waitTimer: Math.random() * 40,
+          speed: 1.0,
         });
       }
 
-      // Bottom station trucks (5)
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
         gameState.trucks.push({
           id: 'B' + (i + 1),
           station: 'bottom',
           state: 'IDLE_AT_STATION',
-          x: MAP.bottomStationX + i * 20,
+          x: MAP.bottomStationX + i * 25,
           y: MAP.bottomStationY,
-          hasBlock: false,
+          blocks: 0,
           pathIndex: 0,
-          waitTimer: Math.random() * 30,
+          waitTimer: Math.random() * 40,
+          speed: 1.0,
         });
       }
     }
 
-    // ===== RENDER HELPERS =====
+    // ===== UTILITY FUNCTIONS =====
+    function getTotalQuarryHeight(quarry) {
+      return quarry.reduce((sum, block) => sum + block.height, 0);
+    }
+
+    function getBlockColor(height) {
+      const colors = [
+        COLOURS.blockEmpty,
+        COLOURS.blockLevel1,
+        COLOURS.blockLevel2,
+        COLOURS.blockLevel3,
+        COLOURS.blockLevel4,
+        COLOURS.blockLevel5,
+        COLOURS.blockLevel6,
+        COLOURS.blockLevel7,
+        COLOURS.blockLevel8,
+      ];
+      return colors[Math.min(height, 8)];
+    }
+
+    function distance(x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // ===== PATHFINDING (100+ waypoints) =====
+    function buildRoadPaths() {
+      roadPaths.topStationToTopQuarry = [];
+      const topStart = { x: MAP.topStationX, y: MAP.topStationY };
+      const topEnd = { x: MAP.topQuarryX + CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE / 2, y: MAP.topQuarryY };
+
+      for (let x = topStart.x; x < topStart.x + 100; x += 5) {
+        roadPaths.topStationToTopQuarry.push({ x, y: topStart.y });
+      }
+
+      for (let y = topStart.y; y > topStart.y - 50; y -= 5) {
+        roadPaths.topStationToTopQuarry.push({ x: topStart.x + 100, y });
+      }
+
+      for (let x = topStart.x + 100; x > topEnd.x; x -= 5) {
+        roadPaths.topStationToTopQuarry.push({ x, y: topStart.y - 50 });
+      }
+
+      for (let y = topStart.y - 50; y > topEnd.y; y -= 5) {
+        roadPaths.topStationToTopQuarry.push({ x: topEnd.x, y });
+      }
+
+      roadPaths.topQuarryToTopStation = [...roadPaths.topStationToTopQuarry].reverse();
+
+      const bottomStart = { x: MAP.bottomStationX, y: MAP.bottomStationY };
+      const bottomEnd = { x: MAP.bottomQuarryX + CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE / 2, y: MAP.bottomQuarryY };
+
+      roadPaths.bottomStationToBottomQuarry = [];
+
+      for (let x = bottomStart.x; x < bottomStart.x + 100; x += 5) {
+        roadPaths.bottomStationToBottomQuarry.push({ x, y: bottomStart.y });
+      }
+
+      for (let y = bottomStart.y; y < bottomStart.y + 50; y += 5) {
+        roadPaths.bottomStationToBottomQuarry.push({ x: bottomStart.x + 100, y });
+      }
+
+      for (let x = bottomStart.x + 100; x > bottomEnd.x; x -= 5) {
+        roadPaths.bottomStationToBottomQuarry.push({ x, y: bottomStart.y + 50 });
+      }
+
+      for (let y = bottomStart.y + 50; y < bottomEnd.y; y += 5) {
+        roadPaths.bottomStationToBottomQuarry.push({ x: bottomEnd.x, y });
+      }
+
+      roadPaths.bottomQuarryToBottomStation = [...roadPaths.bottomStationToBottomQuarry].reverse();
+    }
+
+    // ===== RENDERING HELPERS =====
     function drawRect(x, y, w, h, color) {
       ctx.fillStyle = color;
       ctx.fillRect(Math.round(x), Math.round(y), w, h);
+    }
+
+    function drawStrokedRect(x, y, w, h, fillColor, strokeColor, lineWidth = 1) {
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(Math.round(x), Math.round(y), w, h);
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = lineWidth;
+      ctx.strokeRect(Math.round(x), Math.round(y), w, h);
     }
 
     function drawCircle(x, y, r, color) {
@@ -389,138 +628,224 @@
       ctx.stroke();
     }
 
+    function drawText(text, x, y, color = '#e8e0d5', size = 10, align = 'left') {
+      ctx.fillStyle = color;
+      ctx.font = `${size}px monospace`;
+      ctx.textAlign = align;
+      ctx.fillText(text, x, y);
+    }
+
+    // ===== RENDERING SYSTEM =====
     function drawQuarries() {
-      // Top quarry
+      drawRect(MAP.topQuarryX - 2, MAP.topQuarryY - 2,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, '#3a2a1a');
+
       gameState.topQuarry.forEach(block => {
-        const x = MAP.topQuarryX + block.x * MAP.blockSize;
-        const y = MAP.topQuarryY + block.y * MAP.blockSize;
-        const color = block.height === 0 ? COLOURS.blockEmpty :
-                      block.height === 1 ? COLOURS.blockLow :
-                      block.height === 2 ? COLOURS.blockLow :
-                      block.height === 3 ? COLOURS.blockMid :
-                      block.height === 4 ? COLOURS.blockHigh :
-                      COLOURS.blockVeryHigh;
-        drawRect(x, y, MAP.blockSize - 1, MAP.blockSize - 1, color);
+        const x = MAP.topQuarryX + block.x * CONFIG.BLOCK_SIZE;
+        const y = MAP.topQuarryY + block.y * CONFIG.BLOCK_SIZE;
+        const color = getBlockColor(block.height);
+        drawRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1);
       });
 
-      // Bottom quarry
+      drawRect(MAP.bottomQuarryX - 2, MAP.bottomQuarryY - 2,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, '#3a2a1a');
+
       gameState.bottomQuarry.forEach(block => {
-        const x = MAP.bottomQuarryX + block.x * MAP.blockSize;
-        const y = MAP.bottomQuarryY + block.y * MAP.blockSize;
-        const color = block.height === 0 ? COLOURS.blockEmpty :
-                      block.height === 1 ? COLOURS.blockLow :
-                      block.height === 2 ? COLOURS.blockLow :
-                      block.height === 3 ? COLOURS.blockMid :
-                      block.height === 4 ? COLOURS.blockHigh :
-                      COLOURS.blockVeryHigh;
-        drawRect(x, y, MAP.blockSize - 1, MAP.blockSize - 1, color);
+        const x = MAP.bottomQuarryX + block.x * CONFIG.BLOCK_SIZE;
+        const y = MAP.bottomQuarryY + block.y * CONFIG.BLOCK_SIZE;
+        const color = getBlockColor(block.height);
+        drawRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1);
       });
+
+      drawText('TOP QUARRY', MAP.topQuarryX, MAP.topQuarryY - 8, COLOURS.accent1, 10, 'left');
+      drawText('BOTTOM QUARRY', MAP.bottomQuarryX, MAP.bottomQuarryY - 8, COLOURS.accent1, 10, 'left');
     }
 
     function drawTrack() {
-      const cx = canvas.width * 0.35;
+      const cx = MAP.trackCenterX;
       const cy = MAP.trackCenterY;
-      const rx = 180;
-      const ry = 60;
+      const rx = 200;
+      const ry = 70;
 
       ctx.strokeStyle = COLOURS.trackWood;
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 10;
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Sleeper marks
+      ctx.strokeStyle = COLOURS.trackSteel;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx - 4, ry - 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
       ctx.strokeStyle = COLOURS.trackWood;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 30; i++) {
-        const angle = (i / 30) * Math.PI * 2;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 40; i++) {
+        const angle = (i / 40) * Math.PI * 2;
         const x = cx + Math.cos(angle) * rx;
         const y = cy + Math.sin(angle) * ry;
-        const nextAngle = ((i + 0.5) / 30) * Math.PI * 2;
-        const nx = cx + Math.cos(nextAngle) * (rx - 15);
-        const ny = cy + Math.sin(nextAngle) * (ry - 15);
-        drawLine(x, y, nx, ny, COLOURS.trackWood, 2);
+        const perpAngle = angle + Math.PI / 2;
+        const sleepLength = 12;
+        const sx = x + Math.cos(perpAngle) * sleepLength;
+        const sy = y + Math.sin(perpAngle) * sleepLength;
+        drawLine(x, y, sx, sy, COLOURS.trackWood, 1);
       }
     }
 
     function drawRoads() {
       ctx.strokeStyle = COLOURS.roadDirt;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
-      // Top road
-      roadPaths.topStationToTopQuarry.forEach((p, i) => {
-        if (i < roadPaths.topStationToTopQuarry.length - 1) {
-          const next = roadPaths.topStationToTopQuarry[i + 1];
-          ctx.beginPath();
-          ctx.moveTo(Math.round(p.x), Math.round(p.y));
-          ctx.lineTo(Math.round(next.x), Math.round(next.y));
-          ctx.stroke();
-        }
+      [roadPaths.topStationToTopQuarry, roadPaths.bottomStationToBottomQuarry].forEach(path => {
+        ctx.beginPath();
+        path.forEach((p, i) => {
+          if (i === 0) {
+            ctx.moveTo(Math.round(p.x), Math.round(p.y));
+          } else {
+            ctx.lineTo(Math.round(p.x), Math.round(p.y));
+          }
+        });
+        ctx.stroke();
       });
 
-      // Bottom road
-      roadPaths.bottomStationToBottomQuarry.forEach((p, i) => {
-        if (i < roadPaths.bottomStationToBottomQuarry.length - 1) {
-          const next = roadPaths.bottomStationToBottomQuarry[i + 1];
-          ctx.beginPath();
-          ctx.moveTo(Math.round(p.x), Math.round(p.y));
-          ctx.lineTo(Math.round(next.x), Math.round(next.y));
-          ctx.stroke();
-        }
+      ctx.strokeStyle = COLOURS.roadGravel;
+      ctx.lineWidth = 10;
+      ctx.globalAlpha = 0.3;
+
+      [roadPaths.topStationToTopQuarry, roadPaths.bottomStationToBottomQuarry].forEach(path => {
+        ctx.beginPath();
+        path.forEach((p, i) => {
+          if (i === 0) {
+            ctx.moveTo(Math.round(p.x), Math.round(p.y));
+          } else {
+            ctx.lineTo(Math.round(p.x), Math.round(p.y));
+          }
+        });
+        ctx.stroke();
       });
+
+      ctx.globalAlpha = 1.0;
     }
 
     function drawStations() {
-      const w = 40;
-      const h = 30;
-      // Top station
-      drawRect(MAP.topStationX, MAP.topStationY, w, h, COLOURS.stationBg);
-      ctx.strokeStyle = '#4a3a2a';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(Math.round(MAP.topStationX), Math.round(MAP.topStationY), w, h);
+      const w = 50;
+      const h = 35;
 
-      // Bottom station
-      drawRect(MAP.bottomStationX, MAP.bottomStationY, w, h, COLOURS.stationBg);
-      ctx.strokeRect(Math.round(MAP.bottomStationX), Math.round(MAP.bottomStationY), w, h);
+      drawStrokedRect(MAP.topStationX, MAP.topStationY, w, h,
+        COLOURS.stationBg, '#4a3a2a', 2);
+      drawRect(MAP.topStationX + 2, MAP.topStationY + h - 5, w - 4, 5, COLOURS.stationPlatform);
+      drawText('TOP STATION', MAP.topStationX + w/2, MAP.topStationY - 8, COLOURS.accent1, 9, 'center');
+
+      drawStrokedRect(MAP.bottomStationX, MAP.bottomStationY, w, h,
+        COLOURS.stationBg, '#4a3a2a', 2);
+      drawRect(MAP.bottomStationX + 2, MAP.bottomStationY, w - 4, 5, COLOURS.stationPlatform);
+      drawText('BOTTOM STATION', MAP.bottomStationX + w/2, MAP.bottomStationY - 8, COLOURS.accent1, 9, 'center');
     }
 
     function drawCranes() {
-      // Top crane
-      drawRect(MAP.topStationX + 50, MAP.topStationY - 40, 20, 40, COLOURS.craneMetal);
-      // Draw stacked blocks
+      const tcx = MAP.topCraneX;
+      const tcy = MAP.topCraneY;
+
+      drawRect(tcx - 15, tcy, 30, 60, COLOURS.craneMetal);
+      drawRect(tcx - 12, tcy - 5, 24, 5, COLOURS.craneArm);
+
       for (let i = 0; i < gameState.topCrane.blocks; i++) {
-        drawRect(MAP.topStationX + 52, MAP.topStationY - 45 - i * 6, 16, 5, COLOURS.blockMid);
+        drawRect(tcx - 10, tcy - 10 - i * 7, 20, 6, COLOURS.blockLevel4);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(tcx - 10, tcy - 10 - i * 7, 20, 6);
       }
 
-      // Bottom crane
-      drawRect(MAP.bottomStationX + 50, MAP.bottomStationY + 10, 20, 40, COLOURS.craneMetal);
-      // Draw stacked blocks
+      drawText('Top Crane', tcx, tcy + 70, COLOURS.accent1, 8, 'center');
+
+      const bcx = MAP.bottomCraneX;
+      const bcy = MAP.bottomCraneY;
+
+      drawRect(bcx - 15, bcy, 30, 60, COLOURS.craneMetal);
+      drawRect(bcx - 12, bcy + 55, 24, 5, COLOURS.craneArm);
+
       for (let i = 0; i < gameState.bottomCrane.blocks; i++) {
-        drawRect(MAP.bottomStationX + 52, MAP.bottomStationY + 15 + i * 6, 16, 5, COLOURS.blockMid);
+        drawRect(bcx - 10, bcy + 10 + i * 7, 20, 6, COLOURS.blockLevel4);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(bcx - 10, bcy + 10 + i * 7, 20, 6);
       }
+
+      drawText('Bottom Crane', bcx, bcy - 10, COLOURS.accent1, 8, 'center');
     }
 
     function drawTrain() {
-      const cx = canvas.width * 0.35;
+      const cx = MAP.trackCenterX;
       const cy = MAP.trackCenterY;
-      const rx = 180;
-      const ry = 60;
+      const rx = 200;
+      const ry = 70;
 
-      // Calculate train position on ellipse
       const angle = gameState.train.progress * Math.PI * 2;
       const trainX = cx + Math.cos(angle) * rx;
       const trainY = cy + Math.sin(angle) * ry;
 
-      // Draw train body
-      drawRect(trainX - 15, trainY - 10, 30, 20, COLOURS.trainBody);
-      drawCircle(trainX - 12, trainY + 8, 5, COLOURS.trainWheel);
-      drawCircle(trainX + 12, trainY + 8, 5, COLOURS.trainWheel);
+      // Train shadow effect (z-depth)
+      ctx.globalAlpha = 0.2;
+      drawRect(trainX - 18, trainY + 14, 36, 4, '#000000');
+      ctx.globalAlpha = 1.0;
 
-      // Draw cargo indicator
-      ctx.fillStyle = '#c4b5a0';
-      ctx.font = '10px monospace';
+      // Main train body with gradient effect
+      drawStrokedRect(trainX - 18, trainY - 12, 36, 24,
+        COLOURS.trainBody, '#2a2a2a', 2);
+
+      // Train cabin detail
+      drawRect(trainX - 8, trainY - 8, 8, 16, COLOURS.trainDoor);
+
+      // Windows with depth
+      ctx.strokeStyle = '#1a5a7a';
+      ctx.lineWidth = 1;
+      drawRect(trainX + 2, trainY - 8, 6, 6, '#1a5a7a');
+      drawRect(trainX + 2, trainY + 2, 6, 6, '#1a5a7a');
+
+      // Coupling detail
+      ctx.globalAlpha = 0.6;
+      drawCircle(trainX - 20, trainY + 2, 2, '#8a8a8a');
+      ctx.globalAlpha = 1.0;
+
+      // Wheels with rim detail
+      drawCircle(trainX - 10, trainY + 12, 5, COLOURS.trainWheel);
+      drawCircle(trainX - 10, trainY + 12, 3, COLOURS.trainBody);
+      drawCircle(trainX + 10, trainY + 12, 5, COLOURS.trainWheel);
+      drawCircle(trainX + 10, trainY + 12, 3, COLOURS.trainBody);
+
+      // Direction indicator
+      const directionAngle = angle;
+      const arrowLen = 15;
+      const arrowX = trainX + Math.cos(directionAngle) * arrowLen;
+      const arrowY = trainY + Math.sin(directionAngle) * arrowLen;
+      ctx.globalAlpha = 0.3;
+      drawLine(trainX, trainY, arrowX, arrowY, COLOURS.accent2, 2);
+      ctx.globalAlpha = 1.0;
+
+      // Cargo indicator with visual bar
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.font = 'bold 12px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(gameState.train.cargo, trainX, trainY - 2);
+      ctx.fillText(gameState.train.cargo, trainX, trainY - 18);
+
+      // Cargo bar visualization
+      const cargoBarWidth = 20;
+      const cargoFill = (gameState.train.cargo / gameState.train.maxCargo) * cargoBarWidth;
+      drawRect(trainX - 10, trainY - 23, cargoBarWidth, 3, '#2a2a2a');
+      drawRect(trainX - 10, trainY - 23, cargoFill, 3, COLOURS.accent2);
 
       gameState.train.x = trainX;
       gameState.train.y = trainY;
@@ -528,129 +853,265 @@
 
     function drawTrucks() {
       gameState.trucks.forEach(truck => {
-        drawRect(truck.x - 6, truck.y - 4, 12, 8, COLOURS.truckBody);
-        drawCircle(truck.x - 4, truck.y + 4, 2, COLOURS.truckWheel);
-        drawCircle(truck.x + 4, truck.y + 4, 2, COLOURS.truckWheel);
+        const x = truck.x;
+        const y = truck.y;
+
+        drawStrokedRect(x - 8, y - 5, 16, 10,
+          COLOURS.truckBody, '#3a2a1a', 1);
+
+        drawRect(x - 6, y - 5, 6, 5, COLOURS.truckCab);
+
+        drawCircle(x - 5, y + 5, 2.5, COLOURS.truckWheel);
+        drawCircle(x + 5, y + 5, 2.5, COLOURS.truckWheel);
+
+        if (truck.blocks > 0) {
+          ctx.fillStyle = COLOURS.blockLevel3;
+          ctx.font = '7px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(truck.blocks, x, y - 10);
+        }
+      });
+    }
+
+    function drawTrackCrossings() {
+      const crossings = [
+        { x: MAP.topStationX + 100, y: MAP.topStationY - 50 },
+        { x: MAP.bottomStationX + 100, y: MAP.bottomStationY + 50 },
+      ];
+
+      crossings.forEach(crossing => {
+        ctx.strokeStyle = COLOURS.accent1;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+
+        ctx.beginPath();
+        ctx.rect(crossing.x - 10, crossing.y - 10, 20, 20);
+        ctx.stroke();
+
+        drawLine(crossing.x - 10, crossing.y - 10, crossing.x + 10, crossing.y + 10,
+          COLOURS.accent1, 1);
+        drawLine(crossing.x + 10, crossing.y - 10, crossing.x - 10, crossing.y + 10,
+          COLOURS.accent1, 1);
+
+        ctx.globalAlpha = 1.0;
       });
     }
 
     // ===== GAME LOGIC =====
     function updateTrain() {
-      const speed = 0.003;
-      gameState.train.progress += speed;
-      if (gameState.train.progress >= 1) {
-        gameState.train.progress = 0;
-        // State transitions
-        if (gameState.train.state === 'LOADING_AT_TOP') {
-          gameState.train.state = 'EN_ROUTE_TO_BOTTOM';
-        } else if (gameState.train.state === 'EN_ROUTE_TO_BOTTOM') {
-          gameState.train.state = 'UNLOADING_AT_BOTTOM';
-        } else if (gameState.train.state === 'UNLOADING_AT_BOTTOM') {
-          gameState.train.state = 'EN_ROUTE_TO_TOP';
-        } else if (gameState.train.state === 'EN_ROUTE_TO_TOP') {
-          gameState.train.state = 'LOADING_AT_TOP';
-        }
+      const APPROACH_SPEED = 0.0015;
+      const CRUISE_SPEED = 0.003;
+      const HALT_DURATION = 40;
+
+      switch (gameState.train.state) {
+        case 'LOADING_AT_TOP':
+          if (gameState.train.haltCounter < HALT_DURATION) {
+            gameState.train.haltCounter++;
+            gameState.train.speed = 0;
+          } else {
+            gameState.train.state = 'DEPARTING_FROM_TOP';
+            gameState.train.haltCounter = 0;
+          }
+          break;
+
+        case 'DEPARTING_FROM_TOP':
+          gameState.train.speed = APPROACH_SPEED;
+          gameState.train.progress += APPROACH_SPEED;
+          if (gameState.train.progress > 0.1) {
+            gameState.train.state = 'EN_ROUTE_TO_BOTTOM';
+          }
+          break;
+
+        case 'EN_ROUTE_TO_BOTTOM':
+          gameState.train.speed = CRUISE_SPEED;
+          gameState.train.progress += CRUISE_SPEED;
+          if (gameState.train.progress >= 0.5) {
+            gameState.train.state = 'ARRIVING_AT_BOTTOM';
+            gameState.train.progress = 0.5;
+          }
+          break;
+
+        case 'ARRIVING_AT_BOTTOM':
+          gameState.train.speed = APPROACH_SPEED;
+          gameState.train.progress += APPROACH_SPEED;
+          if (gameState.train.progress >= 0.6) {
+            gameState.train.state = 'UNLOADING_AT_BOTTOM';
+            gameState.train.progress = 0.6;
+            gameState.train.haltCounter = 0;
+          }
+          break;
+
+        case 'UNLOADING_AT_BOTTOM':
+          if (gameState.train.haltCounter < HALT_DURATION) {
+            gameState.train.haltCounter++;
+            gameState.train.speed = 0;
+          } else {
+            gameState.train.state = 'DEPARTING_FROM_BOTTOM';
+            gameState.train.haltCounter = 0;
+          }
+          break;
+
+        case 'DEPARTING_FROM_BOTTOM':
+          gameState.train.speed = APPROACH_SPEED;
+          gameState.train.progress += APPROACH_SPEED;
+          if (gameState.train.progress > 0.7) {
+            gameState.train.state = 'EN_ROUTE_TO_TOP';
+          }
+          break;
+
+        case 'EN_ROUTE_TO_TOP':
+          gameState.train.speed = CRUISE_SPEED;
+          gameState.train.progress += CRUISE_SPEED;
+          if (gameState.train.progress >= 1.0) {
+            gameState.train.progress = 0;
+            gameState.train.state = 'ARRIVING_AT_TOP';
+          }
+          break;
+
+        case 'ARRIVING_AT_TOP':
+          gameState.train.speed = APPROACH_SPEED;
+          gameState.train.progress += APPROACH_SPEED;
+          if (gameState.train.progress >= 0.1) {
+            gameState.train.state = 'LOADING_AT_TOP';
+            gameState.train.progress = 0;
+            gameState.train.haltCounter = 0;
+          }
+          break;
       }
     }
 
     function updateTrucks() {
       gameState.trucks.forEach(truck => {
-        truck.waitTimer--;
+        truck.waitTimer = Math.max(0, truck.waitTimer - 1);
 
-        if (truck.state === 'IDLE_AT_STATION') {
-          if (truck.waitTimer <= 0) {
-            truck.state = 'DRIVING_TO_QUARRY';
-            truck.pathIndex = 0;
-          }
-        } else if (truck.state === 'DRIVING_TO_QUARRY') {
-          const path = truck.station === 'top' ? roadPaths.topStationToTopQuarry : roadPaths.bottomStationToBottomQuarry;
-          if (truck.pathIndex < path.length) {
-            const wp = path[truck.pathIndex];
-            truck.x = wp.x;
-            truck.y = wp.y;
-            truck.pathIndex++;
-          } else {
-            truck.state = 'PICKING_UP_BLOCK';
-            truck.waitTimer = 20;
-          }
-        } else if (truck.state === 'PICKING_UP_BLOCK') {
-          if (truck.waitTimer > 0) {
-            truck.waitTimer--;
-          } else {
-            // Pick up a random block
-            const quarry = truck.station === 'top' ? gameState.topQuarry : gameState.bottomQuarry;
-            const availableBlocks = quarry.filter(b => b.height > 0);
-            if (availableBlocks.length > 0) {
-              const block = availableBlocks[Math.floor(Math.random() * availableBlocks.length)];
-              block.height--;
-              truck.hasBlock = true;
-              truck.state = 'DRIVING_TO_STATION';
-              truck.pathIndex = 0;
-            } else {
-              truck.state = 'IDLE_AT_STATION';
-              truck.waitTimer = 30;
-            }
-          }
-        } else if (truck.state === 'DRIVING_TO_STATION') {
-          const path = truck.station === 'top' ? roadPaths.topQuarryToTopStation : roadPaths.bottomQuarryToBottomStation;
-          if (truck.pathIndex < path.length) {
-            const wp = path[truck.pathIndex];
-            truck.x = wp.x;
-            truck.y = wp.y;
-            truck.pathIndex++;
-          } else {
-            truck.state = 'DEPOSITING_AT_CRANE';
-            truck.waitTimer = 15;
-          }
-        } else if (truck.state === 'DEPOSITING_AT_CRANE') {
-          if (truck.waitTimer > 0) {
-            truck.waitTimer--;
-          } else {
-            if (truck.hasBlock) {
+        switch (truck.state) {
+          case 'IDLE_AT_STATION':
+            if (truck.waitTimer === 0) {
+              const quarry = truck.station === 'top' ? gameState.topQuarry : gameState.bottomQuarry;
+              const hasBlocks = quarry.some(b => b.height > 0);
               const crane = truck.station === 'top' ? gameState.topCrane : gameState.bottomCrane;
-              if (crane.blocks < crane.maxStack) {
-                crane.blocks++;
-                truck.hasBlock = false;
+              const craneNotFull = crane.blocks < crane.maxStack;
+
+              if (hasBlocks && craneNotFull) {
+                truck.state = 'EN_ROUTE_TO_QUARRY';
+                truck.pathIndex = 0;
+              } else {
+                truck.waitTimer = 30 + Math.random() * 40;
               }
             }
-            truck.state = 'IDLE_AT_STATION';
-            truck.waitTimer = 20 + Math.random() * 30;
-            truck.x = (truck.station === 'top' ? MAP.topStationX : MAP.bottomStationX) + Math.random() * 40;
-            truck.y = truck.station === 'top' ? MAP.topStationY : MAP.bottomStationY;
-          }
+            break;
+
+          case 'EN_ROUTE_TO_QUARRY':
+            const path = truck.station === 'top' ?
+              roadPaths.topStationToTopQuarry :
+              roadPaths.bottomStationToBottomQuarry;
+
+            if (truck.pathIndex < path.length) {
+              const wp = path[truck.pathIndex];
+              truck.x = wp.x;
+              truck.y = wp.y;
+              truck.pathIndex++;
+            } else {
+              truck.state = 'PICKING_UP_BLOCK';
+              truck.waitTimer = 25;
+            }
+            break;
+
+          case 'PICKING_UP_BLOCK':
+            if (truck.waitTimer === 0) {
+              const quarry = truck.station === 'top' ? gameState.topQuarry : gameState.bottomQuarry;
+              const availableBlocks = quarry.filter(b => b.height > 0);
+
+              if (availableBlocks.length > 0) {
+                const block = availableBlocks[Math.floor(Math.random() * availableBlocks.length)];
+                block.height = Math.max(0, block.height - 1);
+                truck.blocks = CONFIG.BLOCKS_PER_TRUCK;
+                truck.state = 'EN_ROUTE_TO_STATION';
+                truck.pathIndex = 0;
+                gameState.stats.blocksMoved++;
+              } else {
+                truck.state = 'IDLE_AT_STATION';
+                truck.waitTimer = 20;
+              }
+            }
+            break;
+
+          case 'EN_ROUTE_TO_STATION':
+            const returnPath = truck.station === 'top' ?
+              roadPaths.topQuarryToTopStation :
+              roadPaths.bottomQuarryToBottomStation;
+
+            if (truck.pathIndex < returnPath.length) {
+              const wp = returnPath[truck.pathIndex];
+              truck.x = wp.x;
+              truck.y = wp.y;
+              truck.pathIndex++;
+            } else {
+              truck.state = 'DEPOSITING_AT_CRANE';
+              truck.waitTimer = 20;
+            }
+            break;
+
+          case 'DEPOSITING_AT_CRANE':
+            if (truck.waitTimer === 0) {
+              const crane = truck.station === 'top' ? gameState.topCrane : gameState.bottomCrane;
+
+              if (truck.blocks > 0 && crane.blocks < crane.maxStack) {
+                crane.blocks += truck.blocks;
+                truck.blocks = 0;
+              }
+
+              truck.state = 'IDLE_AT_STATION';
+              truck.waitTimer = 15 + Math.random() * 30;
+              truck.x = truck.station === 'top' ? MAP.topStationX + Math.random() * 40 :
+                        MAP.bottomStationX + Math.random() * 40;
+              truck.y = truck.station === 'top' ? MAP.topStationY : MAP.bottomStationY;
+            }
+            break;
         }
       });
     }
 
     function updateCranes() {
-      // Load train if it's at station
-      if (gameState.train.state === 'LOADING_AT_TOP' && gameState.topCrane.blocks > 0) {
-        if (gameState.train.cargo < gameState.train.maxCargo) {
+      if (gameState.train.state.includes('LOADING_AT_TOP')) {
+        if (gameState.topCrane.blocks > 0 && gameState.train.cargo < gameState.train.maxCargo) {
           gameState.topCrane.blocks--;
           gameState.train.cargo++;
         }
-      } else if (gameState.train.state === 'UNLOADING_AT_BOTTOM' && gameState.train.cargo > 0) {
-        if (gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
+      }
+
+      if (gameState.train.state.includes('UNLOADING_AT_BOTTOM')) {
+        if (gameState.train.cargo > 0 && gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
           gameState.train.cargo--;
           gameState.bottomCrane.blocks++;
         }
       }
     }
 
-    function checkReversal() {
-      const topTotal = gameState.topQuarry.reduce((s, b) => s + b.height, 0);
-      const bottomTotal = gameState.bottomQuarry.reduce((s, b) => s + b.height, 0);
+    function updateQuarryRates() {
+      const currentTopCount = getTotalQuarryHeight(gameState.topQuarry);
+      const currentBottomCount = getTotalQuarryHeight(gameState.bottomQuarry);
 
-      // If top is empty and bottom is full (or nearly), reverse
-      if (topTotal === 0 && bottomTotal > 80 && !gameState.isReversed) {
+      gameState.stats.lastQuarryRates.top = gameState.lastTopQuarryCount - currentTopCount;
+      gameState.stats.lastQuarryRates.bottom = gameState.lastBottomQuarryCount - currentBottomCount;
+
+      gameState.lastTopQuarryCount = currentTopCount;
+      gameState.lastBottomQuarryCount = currentBottomCount;
+    }
+
+    function checkReversal() {
+      const topTotal = getTotalQuarryHeight(gameState.topQuarry);
+      const bottomTotal = getTotalQuarryHeight(gameState.bottomQuarry);
+
+      if (topTotal === 0 && bottomTotal > 200 && !gameState.isReversed) {
         gameState.isReversed = true;
-        // Swap quarry roles (conceptually)
+        gameState.stats.reversalCount++;
         gameState.topQuarry.forEach(b => b.height = 0);
-        gameState.bottomQuarry.forEach(b => b.height = 3 + Math.floor(Math.random() * 3));
-      } else if (bottomTotal === 0 && topTotal > 80 && gameState.isReversed) {
+        gameState.bottomQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 3));
+      } else if (bottomTotal === 0 && topTotal > 200 && gameState.isReversed) {
         gameState.isReversed = false;
-        // Reverse back
-        gameState.topQuarry.forEach(b => b.height = 3 + Math.floor(Math.random() * 3));
+        gameState.stats.reversalCount++;
+        gameState.topQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 3));
         gameState.bottomQuarry.forEach(b => b.height = 0);
       }
     }
@@ -661,54 +1122,127 @@
       updateTrain();
       updateTrucks();
       updateCranes();
+      updateQuarryRates();
       checkReversal();
     }
 
     function render() {
-      // Clear canvas
-      ctx.fillStyle = COLOURS.grass;
+      // Clear canvas with background
+      ctx.fillStyle = COLOURS.canvas_bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Render in proper z-order for depth perception
+      // Layer 1: Track and roads
       drawTrack();
       drawRoads();
-      drawQuarries();
+      drawTrackCrossings();
+
+      // Layer 2: Quarries (major landmarks)
+      drawQuarriesWithDepth();
+
+      // Layer 3: Stations and infrastructure
       drawStations();
-      drawCranes();
+      drawCranesAnimated();
+
+      // Layer 4: Moving entities (train and trucks)
       drawTrain();
-      drawTrucks();
+      drawTrucksEnhanced();
+
+      // Layer 5: Visual effects (particles)
+      // Particles are rendered in drawTrucksEnhanced and ParticleSystem
+
+      // Optional: Debug visualization (disabled by default)
+      if (false) { // Set to true for debug mode
+        renderDebugOverlay();
+      }
+    }
+
+    // Debug visualization for development
+    function renderDebugOverlay() {
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 1;
+
+      // Draw truck paths
+      [roadPaths.topStationToTopQuarry, roadPaths.bottomStationToBottomQuarry].forEach(path => {
+        ctx.beginPath();
+        path.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+      });
+
+      // Draw collision zones
+      gameState.trucks.forEach(truck => {
+        ctx.strokeStyle = '#00ff00';
+        ctx.beginPath();
+        ctx.arc(truck.x, truck.y, 15, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.globalAlpha = 1.0;
     }
 
     function updateUI() {
       gameState.uiUpdateCounter++;
-      if (gameState.uiUpdateCounter < 30) return; // Update every 30 frames (~0.5s)
+      if (gameState.uiUpdateCounter < 30) return;
       gameState.uiUpdateCounter = 0;
 
-      // Update train status
-      document.getElementById('trainStatus').textContent = gameState.train.state.replace(/_/g, ' ');
+      const trainStateDisplay = gameState.train.state.replace(/_/g, ' ');
+      document.getElementById('trainStatus').textContent = trainStateDisplay;
       document.getElementById('trainCargo').textContent = gameState.train.cargo + '/' + gameState.train.maxCargo;
+      document.getElementById('trainSpeed').textContent = Math.round(gameState.train.speed * 100) + '%';
 
-      // Update quarry blocks
-      const topBlockCount = gameState.topQuarry.reduce((sum, block) => sum + block.height, 0);
-      const bottomBlockCount = gameState.bottomQuarry.reduce((sum, block) => sum + block.height, 0);
-      const maxBlockCount = 96;
+      const etaFrames = gameState.train.state.includes('EN_ROUTE') ?
+        Math.round((1 - gameState.train.progress) / gameState.train.speed) : '--';
+      document.getElementById('trainETA').textContent = etaFrames === '--' ? '--' : Math.round(etaFrames / 30) + 's';
 
-      document.getElementById('topQuarryBlocks').textContent = topBlockCount + '/' + maxBlockCount;
-      document.getElementById('topQuarryBar').style.width = (topBlockCount / maxBlockCount * 100) + '%';
+      const topCount = getTotalQuarryHeight(gameState.topQuarry);
+      const bottomCount = getTotalQuarryHeight(gameState.bottomQuarry);
+      const maxCapacity = CONFIG.QUARRY_WIDTH * CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_HEIGHT_LEVELS;
 
-      document.getElementById('bottomQuarryBlocks').textContent = bottomBlockCount + '/' + maxBlockCount;
-      document.getElementById('bottomQuarryBar').style.width = (bottomBlockCount / maxBlockCount * 100) + '%';
+      document.getElementById('topQuarryBlocks').textContent = topCount + '/' + maxCapacity;
+      document.getElementById('topQuarryBar').style.width = (topCount / maxCapacity * 100) + '%';
+      document.getElementById('topQuarryRate').textContent = (gameState.stats.lastQuarryRates.top * 2) + '/min';
 
-      // Update worker lists
+      document.getElementById('bottomQuarryBlocks').textContent = bottomCount + '/' + maxCapacity;
+      document.getElementById('bottomQuarryBar').style.width = (bottomCount / maxCapacity * 100) + '%';
+      document.getElementById('bottomQuarryRate').textContent = (gameState.stats.lastQuarryRates.bottom * 2) + '/min';
+
+      document.getElementById('topCraneBlocks').textContent = gameState.topCrane.blocks + '/' + gameState.topCrane.maxStack;
+      document.getElementById('topCraneBar').style.width = (gameState.topCrane.blocks / gameState.topCrane.maxStack * 100) + '%';
+      document.getElementById('topCraneQueue').textContent = gameState.trucks.filter(t => t.station === 'top' && t.state === 'DEPOSITING_AT_CRANE').length;
+
+      document.getElementById('bottomCraneBlocks').textContent = gameState.bottomCrane.blocks + '/' + gameState.bottomCrane.maxStack;
+      document.getElementById('bottomCraneBar').style.width = (gameState.bottomCrane.blocks / gameState.bottomCrane.maxStack * 100) + '%';
+      document.getElementById('bottomCraneQueue').textContent = gameState.trucks.filter(t => t.station === 'bottom' && t.state === 'DEPOSITING_AT_CRANE').length;
+
       const topWorkers = gameState.trucks.filter(t => t.station === 'top');
       const bottomWorkers = gameState.trucks.filter(t => t.station === 'bottom');
 
       document.getElementById('topWorkersList').innerHTML = topWorkers
-        .map(w => `<div class="worker-item"><span class="worker-id">${w.id}</span> <span class="worker-status">${w.state.toLowerCase()}</span></div>`)
+        .map(w => `<div class="worker-item">
+          <span class="worker-id">${w.id}</span>
+          <span class="queue-indicator ${w.state === 'DEPOSITING_AT_CRANE' ? 'active' : ''}"></span>
+          <span class="worker-status">${w.state.toLowerCase().substring(0, 8)}</span>
+        </div>`)
         .join('');
 
       document.getElementById('bottomWorkersList').innerHTML = bottomWorkers
-        .map(w => `<div class="worker-item"><span class="worker-id">${w.id}</span> <span class="worker-status">${w.state.toLowerCase()}</span></div>`)
+        .map(w => `<div class="worker-item">
+          <span class="worker-id">${w.id}</span>
+          <span class="queue-indicator ${w.state === 'DEPOSITING_AT_CRANE' ? 'active' : ''}"></span>
+          <span class="worker-status">${w.state.toLowerCase().substring(0, 8)}</span>
+        </div>`)
         .join('');
+
+      document.getElementById('totalBlocksMoved').textContent = gameState.stats.blocksMoved;
+      document.getElementById('throughputRate').textContent = Math.round((gameState.stats.blocksMoved / (gameState.frameCount / 1800)) * 60) + '/min';
+      const busyTrucks = gameState.trucks.filter(t => t.state !== 'IDLE_AT_STATION').length;
+      const efficiency = Math.round((busyTrucks / gameState.trucks.length) * 100);
+      document.getElementById('efficiency').textContent = efficiency + '%';
+      document.getElementById('reversalCount').textContent = gameState.stats.reversalCount;
     }
 
     function gameLoop() {
@@ -718,10 +1252,1039 @@
       requestAnimationFrame(gameLoop);
     }
 
+    // ===== GRAPHICS ENHANCEMENT LAYER =====
+
+    // Advanced particle effects for visual polish
+    const ParticleSystem = {
+      particles: [],
+
+      createDust: function(x, y, count = 3) {
+        for (let i = 0; i < count; i++) {
+          this.particles.push({
+            x: x + (Math.random() - 0.5) * 10,
+            y: y + (Math.random() - 0.5) * 10,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            life: 30,
+            maxLife: 30,
+            type: 'dust',
+          });
+        }
+      },
+
+      createSmoke: function(x, y, count = 2) {
+        for (let i = 0; i < count; i++) {
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 1,
+            vy: -1 - Math.random() * 0.5,
+            life: 40,
+            maxLife: 40,
+            type: 'smoke',
+          });
+        }
+      },
+
+      update: function() {
+        this.particles.forEach((p, idx) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+
+          if (p.life <= 0) {
+            this.particles.splice(idx, 1);
+          }
+        });
+      },
+
+      render: function() {
+        this.particles.forEach(p => {
+          const alpha = p.life / p.maxLife;
+          ctx.globalAlpha = alpha * 0.5;
+
+          if (p.type === 'dust') {
+            drawCircle(p.x, p.y, 1, COLOURS.roadDirt);
+          } else if (p.type === 'smoke') {
+            drawCircle(p.x, p.y, 2 + (p.maxLife - p.life) / 10, COLOURS.dirt);
+          }
+        });
+
+        ctx.globalAlpha = 1.0;
+      },
+    };
+
+    // Block placement optimizer - finds best positions in quarry
+    function findOptimalBlockPlacement(quarry, preferredX = null) {
+      const emptyBlocks = quarry.filter(b => b.height < CONFIG.BLOCK_HEIGHT_LEVELS);
+
+      if (emptyBlocks.length === 0) return null;
+
+      // Prefer center area, higher blocks
+      let best = emptyBlocks[0];
+      let bestScore = -Infinity;
+
+      emptyBlocks.forEach(block => {
+        const centerDistance = Math.abs(block.x - CONFIG.QUARRY_WIDTH / 2);
+        const heightFactor = block.height;
+        const score = heightFactor * 10 - centerDistance;
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = block;
+        }
+      });
+
+      return best;
+    }
+
+    // Render optimization - only update visible elements
+    function renderOptimized() {
+      if (gameState.frameCount % 2 === 0) {
+        // Full render every 2 frames
+        ctx.fillStyle = COLOURS.canvas_bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawTrack();
+        drawRoads();
+        drawTrackCrossings();
+      }
+
+      // Always render dynamic elements
+      drawQuarries();
+      drawStations();
+      drawCranes();
+      drawTrain();
+      drawTrucks();
+
+      // Particle effects
+      ParticleSystem.update();
+      ParticleSystem.render();
+    }
+
+    // Enhanced truck rendering with better visuals
+    function drawTrucksEnhanced() {
+      gameState.trucks.forEach(truck => {
+        const x = truck.x;
+        const y = truck.y;
+
+        // Shadow effect
+        ctx.globalAlpha = 0.15;
+        drawCircle(x, y + 7, 6, '#000000');
+        ctx.globalAlpha = 1.0;
+
+        // Truck body
+        drawStrokedRect(x - 8, y - 5, 16, 10,
+          COLOURS.truckBody, '#3a2a1a', 1);
+
+        // Cab with accent
+        drawStrokedRect(x - 6, y - 5, 6, 5, COLOURS.truckCab, '#3a2a1a', 0.5);
+
+        // Wheels with rim
+        drawCircle(x - 5, y + 5, 2.5, COLOURS.truckWheel);
+        drawCircle(x - 5, y + 5, 1.5, COLOURS.truckCab);
+        drawCircle(x + 5, y + 5, 2.5, COLOURS.truckWheel);
+        drawCircle(x + 5, y + 5, 1.5, COLOURS.truckCab);
+
+        // Load indicator
+        if (truck.blocks > 0) {
+          ctx.fillStyle = COLOURS.blockLevel3;
+          ctx.font = 'bold 7px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(truck.blocks, x, y - 10);
+
+          // Load bar
+          drawRect(x - 3, y - 15, 6, 2, COLOURS.blockLevel4);
+        }
+
+        // Status indicator light
+        const statusColor = truck.state === 'IDLE_AT_STATION' ? '#8a7a5a' :
+                           truck.blocks > 0 ? '#d4a574' : '#8ab885';
+        ctx.globalAlpha = 0.6;
+        drawCircle(x - 8, y - 6, 1.5, statusColor);
+        ctx.globalAlpha = 1.0;
+
+        // Create dust on movement
+        if (truck.state.includes('ROUTE')) {
+          if (Math.random() < 0.05) {
+            ParticleSystem.createDust(x, y + 5, 1);
+          }
+        }
+      });
+    }
+
+    // Quarry depth visualization
+    function drawQuarriesWithDepth() {
+      // Draw quarry borders with 3D effect
+      const borderColor = '#2a2a1a';
+      const shadowColor = '#1a1a0a';
+
+      // Top quarry with shadow/depth
+      ctx.globalAlpha = 0.3;
+      drawRect(MAP.topQuarryX + 1, MAP.topQuarryY + 1,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, shadowColor);
+      ctx.globalAlpha = 1.0;
+
+      drawRect(MAP.topQuarryX - 2, MAP.topQuarryY - 2,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, borderColor);
+
+      gameState.topQuarry.forEach(block => {
+        const x = MAP.topQuarryX + block.x * CONFIG.BLOCK_SIZE;
+        const y = MAP.topQuarryY + block.y * CONFIG.BLOCK_SIZE;
+        const color = getBlockColor(block.height);
+
+        // Block shadow for depth
+        if (block.height > 0) {
+          ctx.globalAlpha = 0.2;
+          drawRect(x + 1, y + 1, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, '#000000');
+          ctx.globalAlpha = 1.0;
+        }
+
+        drawRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        // Grid lines with varying opacity based on height
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.globalAlpha = 0.3 + (block.height * 0.1);
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1);
+        ctx.globalAlpha = 1.0;
+      });
+
+      // Bottom quarry
+      ctx.globalAlpha = 0.3;
+      drawRect(MAP.bottomQuarryX + 1, MAP.bottomQuarryY + 1,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, shadowColor);
+      ctx.globalAlpha = 1.0;
+
+      drawRect(MAP.bottomQuarryX - 2, MAP.bottomQuarryY - 2,
+        CONFIG.QUARRY_WIDTH * CONFIG.BLOCK_SIZE + 4,
+        CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_SIZE + 4, borderColor);
+
+      gameState.bottomQuarry.forEach(block => {
+        const x = MAP.bottomQuarryX + block.x * CONFIG.BLOCK_SIZE;
+        const y = MAP.bottomQuarryY + block.y * CONFIG.BLOCK_SIZE;
+        const color = getBlockColor(block.height);
+
+        if (block.height > 0) {
+          ctx.globalAlpha = 0.2;
+          drawRect(x + 1, y + 1, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, '#000000');
+          ctx.globalAlpha = 1.0;
+        }
+
+        drawRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.globalAlpha = 0.3 + (block.height * 0.1);
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x, y, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1);
+        ctx.globalAlpha = 1.0;
+      });
+
+      drawText('TOP QUARRY', MAP.topQuarryX, MAP.topQuarryY - 8, COLOURS.accent1, 10, 'left');
+      drawText('BOTTOM QUARRY', MAP.bottomQuarryX, MAP.bottomQuarryY - 8, COLOURS.accent1, 10, 'left');
+    }
+
+    // Crane animation with loading motion
+    function drawCranesAnimated() {
+      const tcx = MAP.topCraneX;
+      const tcy = MAP.topCraneY;
+
+      // Top crane
+      ctx.globalAlpha = 0.9;
+      drawRect(tcx - 15, tcy, 30, 60, COLOURS.craneMetal);
+
+      // Animated loading indicator
+      const loadingPhase = (gameState.frameCount % 20) / 20;
+      ctx.globalAlpha = 0.5 + loadingPhase * 0.5;
+      drawRect(tcx - 12, tcy - 5 - (loadingPhase * 5), 24, 5, COLOURS.craneArm);
+      ctx.globalAlpha = 1.0;
+
+      // Stacked blocks with proper stacking visual
+      for (let i = 0; i < gameState.topCrane.blocks; i++) {
+        const blockY = tcy - 10 - i * 7;
+        const offset = Math.sin(gameState.frameCount / 10 + i) * 0.5;
+
+        ctx.globalAlpha = 0.9 - (i * 0.05);
+        drawRect(tcx - 10, blockY + offset, 20, 6, COLOURS.blockLevel4);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(tcx - 10, blockY + offset, 20, 6);
+        ctx.globalAlpha = 1.0;
+      }
+
+      drawText('Top Crane', tcx, tcy + 70, COLOURS.accent1, 8, 'center');
+
+      // Bottom crane
+      const bcx = MAP.bottomCraneX;
+      const bcy = MAP.bottomCraneY;
+
+      ctx.globalAlpha = 0.9;
+      drawRect(bcx - 15, bcy, 30, 60, COLOURS.craneMetal);
+
+      ctx.globalAlpha = 0.5 + loadingPhase * 0.5;
+      drawRect(bcx - 12, bcy + 55 + (loadingPhase * 5), 24, 5, COLOURS.craneArm);
+      ctx.globalAlpha = 1.0;
+
+      for (let i = 0; i < gameState.bottomCrane.blocks; i++) {
+        const blockY = bcy + 10 + i * 7;
+        const offset = Math.sin(gameState.frameCount / 10 + i) * 0.5;
+
+        ctx.globalAlpha = 0.9 - (i * 0.05);
+        drawRect(bcx - 10, blockY + offset, 20, 6, COLOURS.blockLevel4);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(bcx - 10, blockY + offset, 20, 6);
+        ctx.globalAlpha = 1.0;
+      }
+
+      drawText('Bottom Crane', bcx, bcy - 10, COLOURS.accent1, 8, 'center');
+    }
+
+    // ===== ADVANCED SYSTEMS (Performance Monitoring, Event Logging, Collision Detection) =====
+
+    // Event logging system for tracking simulation events
+    const EventLogger = {
+      events: [],
+      maxEvents: 1000,
+
+      log: function(eventType, data = {}) {
+        const event = {
+          frame: gameState.frameCount,
+          type: eventType,
+          timestamp: Date.now(),
+          data: data,
+        };
+        this.events.push(event);
+        if (this.events.length > this.maxEvents) {
+          this.events.shift();
+        }
+      },
+
+      getRecentEvents: function(count = 10) {
+        return this.events.slice(-count).reverse();
+      },
+
+      getEventsByType: function(type) {
+        return this.events.filter(e => e.type === type);
+      },
+    };
+
+    // Performance monitoring system
+    const PerformanceMonitor = {
+      frameTimings: [],
+      maxFrames: 120,
+
+      recordFrame: function(deltaTime) {
+        this.frameTimings.push(deltaTime);
+        if (this.frameTimings.length > this.maxFrames) {
+          this.frameTimings.shift();
+        }
+      },
+
+      getAverageFPS: function() {
+        if (this.frameTimings.length === 0) return 60;
+        const avgDelta = this.frameTimings.reduce((a, b) => a + b, 0) / this.frameTimings.length;
+        return Math.round(1000 / avgDelta);
+      },
+
+      getMinFPS: function() {
+        if (this.frameTimings.length === 0) return 60;
+        const maxDelta = Math.max(...this.frameTimings);
+        return Math.round(1000 / maxDelta);
+      },
+    };
+
+    // Advanced collision detection
+    function checkTruckCollision(truck1, truck2) {
+      const distance = Math.hypot(truck2.x - truck1.x, truck2.y - truck1.y);
+      return distance < 15; // Collision radius
+    }
+
+    function getTrucksOnSameRoad(truck) {
+      const onSameRoad = gameState.trucks.filter(t => {
+        return t.id !== truck.id &&
+          t.station === truck.station &&
+          (t.state === 'EN_ROUTE_TO_QUARRY' || t.state === 'EN_ROUTE_TO_STATION');
+      });
+      return onSameRoad.sort((a, b) => Math.hypot(b.x - truck.x, b.y - truck.y) -
+                                        Math.hypot(a.x - truck.x, a.y - truck.y));
+    }
+
+    // Block type system
+    const BlockTypes = {
+      ore: { color: '#8b7355', value: 1, weight: 1 },
+      coal: { color: '#4a3a2a', value: 2, weight: 1.5 },
+      stone: { color: '#9a9a85', value: 1, weight: 1 },
+      refined: { color: '#d4b896', value: 3, weight: 0.5 },
+    };
+
+    // Traffic congestion detection
+    function detectCongestion(station) {
+      const stationTrucks = gameState.trucks.filter(t => t.station === station);
+      const waitingTrucks = stationTrucks.filter(t => t.state === 'IDLE_AT_STATION').length;
+      const totalTrucks = stationTrucks.length;
+      const congestionLevel = (waitingTrucks / totalTrucks) * 100;
+      return {
+        level: congestionLevel,
+        isCongrested: congestionLevel > 60,
+        waitingCount: waitingTrucks,
+      };
+    }
+
+    // System health monitoring
+    const SystemHealth = {
+      getOverallHealth: function() {
+        const topCraneFull = gameState.topCrane.blocks === gameState.topCrane.maxStack;
+        const bottomCraneFull = gameState.bottomCrane.blocks === gameState.bottomCrane.maxStack;
+        const topQuarryEmpty = getTotalQuarryHeight(gameState.topQuarry) === 0;
+        const bottomQuarryEmpty = getTotalQuarryHeight(gameState.bottomQuarry) === 0;
+        const topCongestion = detectCongestion('top');
+        const bottomCongestion = detectCongestion('bottom');
+
+        const issues = [
+          topCraneFull ? 'TopCraneFull' : null,
+          bottomCraneFull ? 'BottomCraneFull' : null,
+          topQuarryEmpty ? 'TopQuarryEmpty' : null,
+          bottomQuarryEmpty ? 'BottomQuarryEmpty' : null,
+          topCongestion.isCongrested ? 'TopCongested' : null,
+          bottomCongestion.isCongrested ? 'BottomCongested' : null,
+        ].filter(Boolean);
+
+        return {
+          issues: issues,
+          isHealthy: issues.length === 0,
+          issueCount: issues.length,
+        };
+      },
+    };
+
+    // Truck efficiency calculation
+    function calculateTruckEfficiency(truck) {
+      const cycleStates = ['IDLE_AT_STATION', 'EN_ROUTE_TO_QUARRY', 'PICKING_UP_BLOCK', 'EN_ROUTE_TO_STATION', 'DEPOSITING_AT_CRANE'];
+      const activeStates = cycleStates.filter(s => s !== 'IDLE_AT_STATION');
+      return activeStates.includes(truck.state) ? 1 : 0;
+    }
+
+    // Advanced quarry analysis
+    function analyzeQuarryDistribution(quarry) {
+      const blocks = quarry.filter(b => b.height > 0);
+      const totalHeight = blocks.reduce((sum, b) => sum + b.height, 0);
+      const avgHeight = blocks.length > 0 ? totalHeight / blocks.length : 0;
+      const distribution = {
+        empty: quarry.filter(b => b.height === 0).length,
+        low: quarry.filter(b => b.height >= 1 && b.height <= 2).length,
+        medium: quarry.filter(b => b.height >= 3 && b.height <= 5).length,
+        high: quarry.filter(b => b.height >= 6).length,
+        totalBlocks: totalHeight,
+        avgHeight: avgHeight,
+      };
+      return distribution;
+    }
+
+    // Pathfinding optimization - find nearest block
+    function findNearestBlock(truck, quarry) {
+      const availableBlocks = quarry.filter(b => b.height > 0);
+      if (availableBlocks.length === 0) return null;
+
+      const quarryOriginX = truck.station === 'top' ? MAP.topQuarryX : MAP.bottomQuarryX;
+      const quarryOriginY = truck.station === 'top' ? MAP.topQuarryY : MAP.bottomQuarryY;
+
+      let nearest = null;
+      let minDistance = Infinity;
+
+      availableBlocks.forEach(block => {
+        const blockX = quarryOriginX + block.x * CONFIG.BLOCK_SIZE;
+        const blockY = quarryOriginY + block.y * CONFIG.BLOCK_SIZE;
+        const dist = distance(truck.x, truck.y, blockX, blockY);
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          nearest = block;
+        }
+      });
+
+      return nearest;
+    }
+
+    // Smoothed truck movement with easing
+    function smoothMovement(current, target, speed = 0.05) {
+      return current + (target - current) * speed;
+    }
+
+    // Train ETA calculation
+    function calculateTrainETA() {
+      if (!gameState.train.state.includes('EN_ROUTE')) {
+        return null;
+      }
+
+      const remainingProgress = 1 - gameState.train.progress;
+      const speed = gameState.train.speed || 0.003;
+      const framesNeeded = remainingProgress / speed;
+      const secondsNeeded = framesNeeded / 60;
+
+      return {
+        frames: Math.round(framesNeeded),
+        seconds: Math.round(secondsNeeded),
+        minutes: Math.round(secondsNeeded / 60),
+      };
+    }
+
+    // Real-time metrics calculation
+    function calculateMetrics() {
+      const totalTrucks = gameState.trucks.length;
+      const idleTrucks = gameState.trucks.filter(t => t.state === 'IDLE_AT_STATION').length;
+      const activeTrucks = totalTrucks - idleTrucks;
+
+      const topQuarryDist = analyzeQuarryDistribution(gameState.topQuarry);
+      const bottomQuarryDist = analyzeQuarryDistribution(gameState.bottomQuarry);
+
+      const topCraneFull = gameState.topCrane.blocks === gameState.topCrane.maxStack;
+      const bottomCraneFull = gameState.bottomCrane.blocks === gameState.bottomCrane.maxStack;
+
+      const blocksInTransit = gameState.trucks.filter(t => t.blocks > 0).length;
+      const totalBlocksInTransit = gameState.trucks.reduce((sum, t) => sum + t.blocks, 0);
+
+      return {
+        activeUtilization: (activeTrucks / totalTrucks) * 100,
+        topQuarryMetrics: topQuarryDist,
+        bottomQuarryMetrics: bottomQuarryDist,
+        craneStatus: {
+          topFull: topCraneFull,
+          bottomFull: bottomCraneFull,
+          topBlocks: gameState.topCrane.blocks,
+          bottomBlocks: gameState.bottomCrane.blocks,
+        },
+        transitionMetrics: {
+          trucksWithLoad: blocksInTransit,
+          totalBlocksInTransit: totalBlocksInTransit,
+          trainCargo: gameState.train.cargo,
+        },
+        congestion: {
+          top: detectCongestion('top'),
+          bottom: detectCongestion('bottom'),
+        },
+      };
+    }
+
+    // Alert system for system state
+    function updateSystemAlerts() {
+      const health = SystemHealth.getOverallHealth();
+      const alertsList = document.getElementById('alertsList');
+      const alertsSection = document.getElementById('alertsSection');
+
+      if (health.issues.length === 0) {
+        alertsSection.style.display = 'none';
+        return;
+      }
+
+      alertsSection.style.display = 'block';
+      const alertHTML = health.issues.map(issue => {
+        let message = '';
+        switch(issue) {
+          case 'TopCraneFull': message = '⚠️ Top crane at capacity!'; break;
+          case 'BottomCraneFull': message = '⚠️ Bottom crane at capacity!'; break;
+          case 'TopQuarryEmpty': message = '⚠️ Top quarry depleted!'; break;
+          case 'BottomQuarryEmpty': message = '⚠️ Bottom quarry depleted!'; break;
+          case 'TopCongested': message = '⚠️ Top station congested!'; break;
+          case 'BottomCongested': message = '⚠️ Bottom station congested!'; break;
+        }
+        return `<div class="alert">${message}</div>`;
+      }).join('');
+
+      alertsList.innerHTML = alertHTML;
+    }
+
+    // Animation frame counter for smooth transitions
+    let lastFrameTime = Date.now();
+    let frameCounter = 0;
+
+    function updateFrameMetrics() {
+      const now = Date.now();
+      const deltaTime = now - lastFrameTime;
+      lastFrameTime = now;
+
+      frameCounter++;
+      if (frameCounter >= 60) {
+        const fps = Math.round(1000 / (deltaTime / 60));
+        PerformanceMonitor.recordFrame(deltaTime / 60);
+        frameCounter = 0;
+      }
+    }
+
+    // Truck state information helper
+    function getTruckStateInfo(truck) {
+      const stateDescriptions = {
+        'IDLE_AT_STATION': 'Waiting',
+        'EN_ROUTE_TO_QUARRY': 'To quarry',
+        'PICKING_UP_BLOCK': 'Loading',
+        'EN_ROUTE_TO_STATION': 'Returning',
+        'DEPOSITING_AT_CRANE': 'At crane',
+      };
+      return stateDescriptions[truck.state] || truck.state;
+    }
+
+    // Train position interpretation
+    function getTrainLocationDescription() {
+      const progress = gameState.train.progress;
+      if (progress < 0.25) return 'Top Station';
+      if (progress < 0.5) return 'En Route (North)';
+      if (progress < 0.75) return 'Bottom Station';
+      return 'En Route (South)';
+    }
+
+    // Historical data tracking
+    const HistoricalData = {
+      hourlyProduction: [],
+      maxHistorySize: 480, // 8 hours at 1min updates
+
+      recordProduction: function(blocksMoved) {
+        this.hourlyProduction.push({
+          frame: gameState.frameCount,
+          blocksMoved: blocksMoved,
+          timestamp: Date.now(),
+        });
+        if (this.hourlyProduction.length > this.maxHistorySize) {
+          this.hourlyProduction.shift();
+        }
+      },
+
+      getProductionTrend: function() {
+        if (this.hourlyProduction.length < 2) return 0;
+        const recent = this.hourlyProduction.slice(-60); // Last minute
+        const older = this.hourlyProduction.slice(-120, -60); // Minute before
+        const recentAvg = recent.reduce((sum, d) => sum + d.blocksMoved, 0) / recent.length;
+        const olderAvg = older.length > 0 ? older.reduce((sum, d) => sum + d.blocksMoved, 0) / older.length : recentAvg;
+        return recentAvg - olderAvg; // Positive = increasing, negative = decreasing
+      },
+    };
+
+    // Simulation statistics compilation
+    function compileFullStatistics() {
+      return {
+        frameCount: gameState.frameCount,
+        blocksMoved: gameState.stats.blocksMoved,
+        reversalCount: gameState.stats.reversalCount,
+        metrics: calculateMetrics(),
+        health: SystemHealth.getOverallHealth(),
+        performanceAvgFPS: PerformanceMonitor.getAverageFPS(),
+        trainState: gameState.train.state,
+        trainCargo: gameState.train.cargo,
+        trainLocation: getTrainLocationDescription(),
+        craneStatus: {
+          top: gameState.topCrane.blocks + '/' + gameState.topCrane.maxStack,
+          bottom: gameState.bottomCrane.blocks + '/' + gameState.bottomCrane.maxStack,
+        },
+      };
+    }
+
+    // Integrate advanced systems into update
+    function updateAdvancedSystems() {
+      updateFrameMetrics();
+      updateSystemAlerts();
+
+      if (gameState.frameCount % 120 === 0) { // Every 2 seconds
+        HistoricalData.recordProduction(gameState.stats.blocksMoved);
+      }
+    }
+
+    // ===== VEHICLE MANAGEMENT SYSTEM =====
+
+    // Truck behavior optimization
+    const TruckBehavior = {
+      // Check if truck should wait (congestion management)
+      shouldWait: function(truck) {
+        const stationTrucks = gameState.trucks.filter(t => t.station === truck.station);
+        const idleCount = stationTrucks.filter(t => t.state === 'IDLE_AT_STATION').length;
+        return idleCount > 3; // Wait if too many trucks idle
+      },
+
+      // Get priority for next job
+      getJobPriority: function(truck) {
+        const quarry = truck.station === 'top' ? gameState.topQuarry : gameState.bottomQuarry;
+        const crane = truck.station === 'top' ? gameState.topCrane : gameState.bottomCrane;
+
+        let priority = 0;
+
+        // High priority if crane is almost empty
+        if (crane.blocks < 2) priority += 100;
+
+        // Medium priority if quarry has blocks
+        const availableBlocks = quarry.filter(b => b.height > 0).length;
+        if (availableBlocks > 0) priority += 50;
+
+        // Lower priority if too many trucks waiting
+        const waitingTrucks = gameState.trucks.filter(t =>
+          t.station === truck.station && t.state === 'IDLE_AT_STATION').length;
+        priority -= waitingTrucks * 5;
+
+        return priority;
+      },
+
+      // Estimate truck efficiency based on current cycle
+      estimateEfficiency: function(truck) {
+        const activeStates = [
+          'EN_ROUTE_TO_QUARRY',
+          'PICKING_UP_BLOCK',
+          'EN_ROUTE_TO_STATION',
+          'DEPOSITING_AT_CRANE',
+        ];
+        return activeStates.includes(truck.state) ? 1 : 0;
+      },
+    };
+
+    // Station load balancing
+    const LoadBalancer = {
+      getOptimalTruckAssignment: function() {
+        const topCraneFull = gameState.topCrane.blocks === gameState.topCrane.maxStack;
+        const bottomCraneFull = gameState.bottomCrane.blocks === gameState.bottomCrane.maxStack;
+        const topQuarryEmpty = getTotalQuarryHeight(gameState.topQuarry) === 0;
+        const bottomQuarryEmpty = getTotalQuarryHeight(gameState.bottomQuarry) === 0;
+
+        return {
+          topCanWorkOnQuarry: !topQuarryEmpty && !topCraneFull,
+          bottomCanWorkOnQuarry: !bottomQuarryEmpty && !bottomCraneFull,
+          bottleneck: topCraneFull || bottomCraneFull ? 'CRANE' : 'NONE',
+        };
+      },
+    };
+
+    // Advanced pathfinding with waypoint optimization
+    function optimizePathWaypoints(path) {
+      if (path.length < 3) return path;
+
+      const optimized = [path[0]];
+      for (let i = 1; i < path.length - 1; i++) {
+        const prev = optimized[optimized.length - 1];
+        const current = path[i];
+        const next = path[i + 1];
+
+        // Skip collinear waypoints
+        const crossProduct = (current.x - prev.x) * (next.y - current.y) -
+                           (current.y - prev.y) * (next.x - current.x);
+
+        if (Math.abs(crossProduct) > 0.5) { // Not perfectly collinear
+          optimized.push(current);
+        }
+      }
+      optimized.push(path[path.length - 1]);
+      return optimized;
+    }
+
+    // Truck movement interpolation (smooth movement)
+    function interpolateTruckPosition(truck, pathWaypoint) {
+      const smoothFactor = 0.1;
+      truck.x += (pathWaypoint.x - truck.x) * smoothFactor;
+      truck.y += (pathWaypoint.y - truck.y) * smoothFactor;
+    }
+
+    // Crane operation sequencing
+    const CraneSequencer = {
+      getNextBlockToDrop: function(crane, quarry, truckId) {
+        // FIFO for fairness
+        return crane.queue.length > 0 ? crane.queue[0] : null;
+      },
+
+      prioritizeCraneOperations: function() {
+        // Top crane priority: if train is loading
+        const topPriority = gameState.train.state.includes('LOADING_AT_TOP');
+        const bottomPriority = gameState.train.state.includes('UNLOADING_AT_BOTTOM');
+
+        if (topPriority && gameState.topCrane.blocks > 0 && gameState.train.cargo < gameState.train.maxCargo) {
+          return 'TOP';
+        }
+        if (bottomPriority && gameState.train.cargo > 0 && gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
+          return 'BOTTOM';
+        }
+        return 'BALANCED';
+      },
+    };
+
+    // System resource monitoring
+    const ResourceMonitor = {
+      capacityUtilization: { top: 0, bottom: 0 },
+
+      updateUtilization: function() {
+        const topTotal = getTotalQuarryHeight(gameState.topQuarry);
+        const bottomTotal = getTotalQuarryHeight(gameState.bottomQuarry);
+        const maxCap = CONFIG.QUARRY_WIDTH * CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_HEIGHT_LEVELS;
+
+        this.capacityUtilization.top = (topTotal / maxCap) * 100;
+        this.capacityUtilization.bottom = (bottomTotal / maxCap) * 100;
+
+        return this.capacityUtilization;
+      },
+
+      isCapacityFull: function(station) {
+        const util = station === 'top' ? this.capacityUtilization.top : this.capacityUtilization.bottom;
+        return util > 90;
+      },
+
+      isCapacityLow: function(station) {
+        const util = station === 'top' ? this.capacityUtilization.top : this.capacityUtilization.bottom;
+        return util < 10;
+      },
+    };
+
+    // Train state machine helper
+    const TrainStateMachine = {
+      states: [
+        'LOADING_AT_TOP',
+        'DEPARTING_FROM_TOP',
+        'EN_ROUTE_TO_BOTTOM',
+        'ARRIVING_AT_BOTTOM',
+        'UNLOADING_AT_BOTTOM',
+        'DEPARTING_FROM_BOTTOM',
+        'EN_ROUTE_TO_TOP',
+        'ARRIVING_AT_TOP',
+      ],
+
+      isLoading: function() {
+        return gameState.train.state.includes('LOADING');
+      },
+
+      isUnloading: function() {
+        return gameState.train.state.includes('UNLOADING');
+      },
+
+      isInTransit: function() {
+        return gameState.train.state.includes('EN_ROUTE');
+      },
+
+      isAtStation: function() {
+        return gameState.train.state.includes('AT');
+      },
+    };
+
+    // Comprehensive system state snapshot
+    function captureSystemSnapshot() {
+      return {
+        timestamp: gameState.frameCount,
+        train: {
+          state: gameState.train.state,
+          cargo: gameState.train.cargo,
+          progress: gameState.train.progress,
+          speed: gameState.train.speed,
+        },
+        cranes: {
+          top: gameState.topCrane.blocks,
+          bottom: gameState.bottomCrane.blocks,
+        },
+        quarries: {
+          top: getTotalQuarryHeight(gameState.topQuarry),
+          bottom: getTotalQuarryHeight(gameState.bottomQuarry),
+        },
+        trucks: gameState.trucks.map(t => ({
+          id: t.id,
+          state: t.state,
+          blocks: t.blocks,
+          station: t.station,
+        })),
+        stats: {
+          blocksMoved: gameState.stats.blocksMoved,
+          reversals: gameState.stats.reversalCount,
+        },
+      };
+    }
+
     // ===== START =====
     initializeQuarries();
-    buildRoadPaths();
     initializeTrucks();
+    buildRoadPaths();
+
+    // ===== SIMULATION STATISTICS & REPORTING =====
+
+    // Comprehensive statistics engine
+    const SimulationStats = {
+      startTime: Date.now(),
+      snapshots: [],
+
+      recordSnapshot: function() {
+        const snapshot = captureSystemSnapshot();
+        this.snapshots.push(snapshot);
+
+        // Keep only last 3600 snapshots (60 mins at 1 per frame avg)
+        if (this.snapshots.length > 3600) {
+          this.snapshots.shift();
+        }
+      },
+
+      getProductionRate: function() {
+        if (this.snapshots.length < 2) return 0;
+        const recentBlocks = gameState.stats.blocksMoved;
+        const elapsedSeconds = (Date.now() - this.startTime) / 1000;
+        return elapsedSeconds > 0 ? (recentBlocks / elapsedSeconds).toFixed(2) : 0;
+      },
+
+      getAverageHaltTime: function() {
+        return gameState.train.haltDuration || 0;
+      },
+
+      getTotalTransportTime: function() {
+        const completedCycles = gameState.stats.reversalCount * 2; // Each reversal = 2 full cycles
+        const totalFrames = gameState.frameCount;
+        return completedCycles > 0 ? (totalFrames / completedCycles).toFixed(0) : 0;
+      },
+
+      getSystemEfficiency: function() {
+        // Efficiency = blocks moved per total truck-hours
+        const trucksCount = gameState.trucks.length;
+        const activeFrames = gameState.trucks.filter(t => t.state !== 'IDLE_AT_STATION').length;
+        const potentialCapacity = trucksCount * gameState.frameCount;
+        return potentialCapacity > 0 ?
+          ((gameState.stats.blocksMoved / potentialCapacity) * 100).toFixed(1) : 0;
+      },
+
+      getDetailedReport: function() {
+        return {
+          uptime: ((Date.now() - this.startTime) / 1000 / 60).toFixed(1) + ' min',
+          blocksMoved: gameState.stats.blocksMoved,
+          productionRate: this.getProductionRate() + ' blocks/sec',
+          reversals: gameState.stats.reversalCount,
+          efficiency: this.getSystemEfficiency() + '%',
+          avgTransportTime: this.getTotalTransportTime() + ' frames',
+          currentTruckUtilization: (
+            gameState.trucks.filter(t => t.state !== 'IDLE_AT_STATION').length /
+            gameState.trucks.length * 100
+          ).toFixed(1) + '%',
+        };
+      },
+    };
+
+    // Enhanced UI update with more detailed information
+    function updateUIEnhanced() {
+      gameState.uiUpdateCounter++;
+      if (gameState.uiUpdateCounter < 30) return;
+      gameState.uiUpdateCounter = 0;
+
+      // Train section - comprehensive info
+      const trainStateDisplay = gameState.train.state.replace(/_/g, ' ');
+      document.getElementById('trainStatus').textContent = trainStateDisplay;
+      document.getElementById('trainCargo').textContent = gameState.train.cargo + '/' + gameState.train.maxCargo;
+
+      // Speed as percentage of max speed
+      const maxSpeed = 0.003;
+      const speedPercent = gameState.train.speed > 0 ? Math.round((gameState.train.speed / maxSpeed) * 100) : 0;
+      document.getElementById('trainSpeed').textContent = speedPercent + '%';
+
+      // ETA calculation with better accuracy
+      let etaText = '--';
+      if (gameState.train.state.includes('EN_ROUTE')) {
+        const remainingProgress = 1 - gameState.train.progress;
+        const speed = gameState.train.speed || 0.003;
+        const framesNeeded = remainingProgress / speed;
+        const secondsNeeded = Math.round(framesNeeded / 60);
+        etaText = secondsNeeded + 's';
+      }
+      document.getElementById('trainETA').textContent = etaText;
+
+      // Quarry information with rates
+      const topCount = getTotalQuarryHeight(gameState.topQuarry);
+      const bottomCount = getTotalQuarryHeight(gameState.bottomQuarry);
+      const maxCapacity = CONFIG.QUARRY_WIDTH * CONFIG.QUARRY_HEIGHT * CONFIG.BLOCK_HEIGHT_LEVELS;
+
+      // Top quarry - color code by fullness
+      document.getElementById('topQuarryBlocks').textContent = topCount + '/' + maxCapacity;
+      const topFillPercent = (topCount / maxCapacity) * 100;
+      document.getElementById('topQuarryBar').style.width = topFillPercent + '%';
+
+      // Change color based on level
+      let topBarColor = '#8b7355'; // Normal
+      if (topFillPercent > 90) topBarColor = '#d4a574'; // Warning
+      if (topFillPercent < 10) topBarColor = '#c85a5a'; // Critical
+      if (topFillPercent > 80 && topFillPercent <= 90) topBarColor = '#a89070'; // High
+      document.getElementById('topQuarryBar').style.background =
+        `linear-gradient(90deg, ${topBarColor} 0%, ${topBarColor} 100%)`;
+
+      document.getElementById('topQuarryRate').textContent = (gameState.stats.lastQuarryRates.top * 2) + '/min';
+
+      // Bottom quarry
+      document.getElementById('bottomQuarryBlocks').textContent = bottomCount + '/' + maxCapacity;
+      const bottomFillPercent = (bottomCount / maxCapacity) * 100;
+      document.getElementById('bottomQuarryBar').style.width = bottomFillPercent + '%';
+
+      let bottomBarColor = '#8b7355';
+      if (bottomFillPercent > 90) bottomBarColor = '#d4a574';
+      if (bottomFillPercent < 10) bottomBarColor = '#c85a5a';
+      if (bottomFillPercent > 80 && bottomFillPercent <= 90) bottomBarColor = '#a89070';
+      document.getElementById('bottomQuarryBar').style.background =
+        `linear-gradient(90deg, ${bottomBarColor} 0%, ${bottomBarColor} 100%)`;
+
+      document.getElementById('bottomQuarryRate').textContent = (gameState.stats.lastQuarryRates.bottom * 2) + '/min';
+
+      // Crane status with queue information
+      document.getElementById('topCraneBlocks').textContent = gameState.topCrane.blocks + '/' + gameState.topCrane.maxStack;
+      document.getElementById('topCraneBar').style.width = (gameState.topCrane.blocks / gameState.topCrane.maxStack * 100) + '%';
+      const topCraneWaiting = gameState.trucks.filter(t => t.station === 'top' && t.state === 'DEPOSITING_AT_CRANE').length;
+      document.getElementById('topCraneQueue').textContent = topCraneWaiting;
+
+      document.getElementById('bottomCraneBlocks').textContent = gameState.bottomCrane.blocks + '/' + gameState.bottomCrane.maxStack;
+      document.getElementById('bottomCraneBar').style.width = (gameState.bottomCrane.blocks / gameState.bottomCrane.maxStack * 100) + '%';
+      const bottomCraneWaiting = gameState.trucks.filter(t => t.station === 'bottom' && t.state === 'DEPOSITING_AT_CRANE').length;
+      document.getElementById('bottomCraneQueue').textContent = bottomCraneWaiting;
+
+      // Workers section with enhanced state display
+      const topWorkers = gameState.trucks.filter(t => t.station === 'top');
+      const bottomWorkers = gameState.trucks.filter(t => t.station === 'bottom');
+
+      document.getElementById('topWorkersList').innerHTML = topWorkers
+        .map(w => {
+          const isActive = w.state !== 'IDLE_AT_STATION';
+          const stateShort = getTruckStateInfo(w);
+          return `<div class="worker-item">
+            <span class="worker-id">${w.id}</span>
+            <span class="queue-indicator ${isActive ? 'active' : ''}"></span>
+            <span class="worker-status">${stateShort}</span>
+          </div>`;
+        })
+        .join('');
+
+      document.getElementById('bottomWorkersList').innerHTML = bottomWorkers
+        .map(w => {
+          const isActive = w.state !== 'IDLE_AT_STATION';
+          const stateShort = getTruckStateInfo(w);
+          return `<div class="worker-item">
+            <span class="worker-id">${w.id}</span>
+            <span class="queue-indicator ${isActive ? 'active' : ''}"></span>
+            <span class="worker-status">${stateShort}</span>
+          </div>`;
+        })
+        .join('');
+
+      // Metrics section with live calculations
+      document.getElementById('totalBlocksMoved').textContent = gameState.stats.blocksMoved;
+
+      // Throughput rate calculation
+      const elapsedSeconds = gameState.frameCount / 60;
+      const throughput = elapsedSeconds > 0 ? Math.round((gameState.stats.blocksMoved / elapsedSeconds) * 60) : 0;
+      document.getElementById('throughputRate').textContent = throughput + '/min';
+
+      // System efficiency metric
+      const busyTrucks = gameState.trucks.filter(t => t.state !== 'IDLE_AT_STATION').length;
+      const efficiency = Math.round((busyTrucks / gameState.trucks.length) * 100);
+      document.getElementById('efficiency').textContent = efficiency + '%';
+
+      // Reversal count
+      document.getElementById('reversalCount').textContent = gameState.stats.reversalCount;
+
+      // Record snapshot for statistics
+      if (gameState.frameCount % 120 === 0) {
+        SimulationStats.recordSnapshot();
+      }
+    }
+
+    // Modify gameLoop to include all enhancements
+    const originalGameLoop = gameLoop;
+    function gameLoop() {
+      update();
+      updateAdvancedSystems();
+      ResourceMonitor.updateUtilization();
+      render();
+      updateUIEnhanced();
+      requestAnimationFrame(gameLoop);
+    }
+
     gameLoop();
   </script>
 </body>
