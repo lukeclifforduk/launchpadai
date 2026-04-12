@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Train Sim — Grid-Based with Carriages</title>
+  <title>Quarry</title>
   <style>
     * {
       margin: 0;
@@ -20,15 +20,17 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      padding: 10px;
     }
 
     #gameContainer {
       position: relative;
-      width: 1200px;
+      width: 800px;
       height: 600px;
       background: #2d2a26;
-      border: 2px solid #5a4a3a;
+      border: 3px solid #5a4a3a;
       display: flex;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
 
     #canvas {
@@ -43,10 +45,10 @@
       width: 280px;
       background: #0f0d0a;
       border-left: 3px solid #5a4a3a;
-      padding: 12px;
+      padding: 15px;
       overflow-y: auto;
       font-size: 10px;
-      line-height: 1.5;
+      line-height: 1.6;
       color: #d8d0c5;
     }
 
@@ -63,25 +65,30 @@
       border-radius: 3px;
     }
 
+    #sidebar::-webkit-scrollbar-thumb:hover {
+      background: #5a4a3a;
+    }
+
     .section {
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
       border-bottom: 1px solid #3a2a1a;
     }
 
     .section:last-child {
       border-bottom: none;
+      margin-bottom: 0;
     }
 
     .section h3 {
       font-size: 11px;
       font-weight: bold;
       color: #c4b5a0;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border-bottom: 1px solid #4a3a2a;
-      padding-bottom: 3px;
+      padding-bottom: 4px;
     }
 
     .stat-row {
@@ -100,24 +107,29 @@
       color: #f0e8d8;
       font-weight: bold;
       text-align: right;
-      flex: 0 0 80px;
-    }
-
-    .stat-value.warning {
-      color: #d4a574;
+      flex: 0 0 100px;
     }
 
     .stat-value.good {
       color: #8ab885;
     }
 
+    .stat-value.warning {
+      color: #d4a574;
+    }
+
     .carriage-info {
       background: #1a1815;
-      border-left: 2px solid #8b7355;
-      padding: 3px 5px;
-      margin: 2px 0;
+      border-left: 3px solid #8b7355;
+      padding: 4px 5px;
+      margin: 3px 0;
       font-size: 8px;
       color: #b8a895;
+      border-radius: 1px;
+    }
+
+    .carriage-info.full {
+      border-left-color: #8ab885;
     }
 
     .progress-bar {
@@ -141,19 +153,39 @@
       display: flex;
       justify-content: space-between;
       font-size: 8px;
-      margin-bottom: 2px;
-      padding: 2px;
+      margin-bottom: 3px;
+      padding: 2px 3px;
       background: #1a1815;
       border-radius: 1px;
     }
 
     .metrics-label {
       color: #8a7a65;
+      flex: 1;
     }
 
     .metrics-value {
       color: #d4b896;
       font-weight: bold;
+    }
+
+    .state-indicator {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 3px;
+      background: #8b7355;
+    }
+
+    .state-indicator.active {
+      background: #d4a574;
+      animation: pulse 0.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
   </style>
 </head>
@@ -161,16 +193,20 @@
   <div id="gameContainer">
     <canvas id="canvas"></canvas>
     <div id="sidebar">
-      <!-- Train Section -->
+      <!-- Train Status Section -->
       <div class="section">
         <h3>🚂 Train Status</h3>
         <div class="stat-row">
           <span class="stat-label">State:</span>
-          <span class="stat-value" id="trainStatus">LOADING</span>
+          <span class="stat-value" id="trainStatus">DOCKING</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Position:</span>
-          <span class="stat-value" id="trainPosition">--</span>
+          <span class="stat-value" id="trainPosition">Waypoint 0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Speed:</span>
+          <span class="stat-value" id="trainSpeed">0.3 wp/f</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Total Cargo:</span>
@@ -184,11 +220,27 @@
         <div id="carriagesList"></div>
       </div>
 
+      <!-- Top Station Section -->
+      <div class="section">
+        <h3>🚉 Top Station</h3>
+        <div class="stat-row">
+          <span class="stat-label">Crane Load:</span>
+          <span class="stat-value" id="topCraneBlocks">0/8</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="topCraneBar" style="width: 0%;"></div>
+        </div>
+        <div class="stat-row" style="margin-top: 4px;">
+          <span class="stat-label">Trucks Active:</span>
+          <span class="stat-value" id="topTrucksActive">0/5</span>
+        </div>
+      </div>
+
       <!-- Top Quarry Section -->
       <div class="section">
         <h3>⛏️ Top Quarry</h3>
         <div class="stat-row">
-          <span class="stat-label">Blocks:</span>
+          <span class="stat-label">Blocks Avail:</span>
           <span class="stat-value" id="topQuarryBlocks">0/384</span>
         </div>
         <div class="progress-bar">
@@ -196,15 +248,19 @@
         </div>
       </div>
 
-      <!-- Top Crane Section -->
+      <!-- Bottom Station Section -->
       <div class="section">
-        <h3>🏗️ Top Crane</h3>
+        <h3>🚉 Bottom Station</h3>
         <div class="stat-row">
-          <span class="stat-label">Stacked:</span>
-          <span class="stat-value" id="topCraneBlocks">0/8</span>
+          <span class="stat-label">Crane Receive:</span>
+          <span class="stat-value" id="bottomCraneBlocks">0/8</span>
         </div>
         <div class="progress-bar">
-          <div class="progress-fill" id="topCraneBar" style="width: 0%;"></div>
+          <div class="progress-fill" id="bottomCraneBar" style="width: 0%;"></div>
+        </div>
+        <div class="stat-row" style="margin-top: 4px;">
+          <span class="stat-label">Trucks Active:</span>
+          <span class="stat-value" id="bottomTrucksActive">0/5</span>
         </div>
       </div>
 
@@ -212,7 +268,7 @@
       <div class="section">
         <h3>⛏️ Bottom Quarry</h3>
         <div class="stat-row">
-          <span class="stat-label">Blocks:</span>
+          <span class="stat-label">Blocks Avail:</span>
           <span class="stat-value" id="bottomQuarryBlocks">0/384</span>
         </div>
         <div class="progress-bar">
@@ -220,19 +276,7 @@
         </div>
       </div>
 
-      <!-- Bottom Crane Section -->
-      <div class="section">
-        <h3>🏗️ Bottom Crane</h3>
-        <div class="stat-row">
-          <span class="stat-label">Stacked:</span>
-          <span class="stat-value" id="bottomCraneBlocks">0/8</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="bottomCraneBar" style="width: 0%;"></div>
-        </div>
-      </div>
-
-      <!-- System Metrics -->
+      <!-- System Metrics Section -->
       <div class="section">
         <h3>📊 Metrics</h3>
         <div class="metrics-row">
@@ -244,6 +288,10 @@
           <span class="metrics-value" id="throughputRate">0/min</span>
         </div>
         <div class="metrics-row">
+          <span class="metrics-label">FPS:</span>
+          <span class="metrics-value" id="fpsCounter">60</span>
+        </div>
+        <div class="metrics-row">
           <span class="metrics-label">Reversals:</span>
           <span class="metrics-value" id="reversalCount">0</span>
         </div>
@@ -252,16 +300,18 @@
   </div>
 
   <script>
-    // ===== GRID SYSTEM CONSTANTS =====
+    // ==================== GAME CONFIGURATION ====================
+
+    // Grid System Constants
     const GRID = {
-      WIDTH: 20,      // 20 columns
-      HEIGHT: 10,     // 10 rows
-      CELL_SIZE: 60,  // 60 pixels per cell
-      CANVAS_WIDTH: 1200,
+      WIDTH: 16,          // 16 columns
+      HEIGHT: 12,         // 12 rows
+      CELL_SIZE: 50,      // 50 pixels per cell
+      CANVAS_WIDTH: 800,
       CANVAS_HEIGHT: 600,
     };
 
-    // ===== GAME CONFIGURATION =====
+    // Game Configuration
     const CONFIG = {
       QUARRY_GRID_WIDTH: 24,
       QUARRY_GRID_HEIGHT: 16,
@@ -272,14 +322,22 @@
       TRUCK_COUNT_PER_STATION: 5,
       BLOCKS_PER_TRUCK: 1,
       BLOCK_HEIGHT_LEVELS: 8,
+      // Speeds (waypoints per frame)
+      TRAIN_SPEED: 0.3,
+      TRUCK_SPEED: 0.15,
+      // Timing (in frames)
+      STATION_HALT_FRAMES: 40,
+      QUARRY_COLLECT_FRAMES: 15,
+      STATION_DEPOSIT_FRAMES: 10,
     };
 
-    // ===== COLOR PALETTE =====
+    // Color Palette
     const COLOURS = {
-      canvas_bg: '#2d2a26',
-      grass: '#4a6a3a',
-      dirt: '#5a5a4a',
-      gravel: '#6a6a5a',
+      canvas_bg: '#2a2622',
+      terrain_grass: '#3a4a2a',
+      terrain_dirt: '#5a5a4a',
+      quarry_bg: '#4a3a2a',
+      quarry_rock: '#6a5a4a',
       blockEmpty: '#7a7a6a',
       blockLevel1: '#8a8a7a',
       blockLevel2: '#9a9a85',
@@ -291,35 +349,45 @@
       blockLevel8: '#4a3a15',
       stationBg: '#b3a085',
       stationPlatform: '#9a8a75',
-      craneMetal: '#6a6a6a',
-      craneArm: '#8a8a8a',
-      trackWood: '#4a3a2a',
-      trackSteel: '#3a3a3a',
-      roadDirt: '#7a6a52',
-      roadGravel: '#8a7a62',
+      stationBorder: '#5a4a3a',
+      craneMetal: '#5a5a5a',
+      craneArm: '#7a7a7a',
+      craneBase: '#3a3a3a',
+      trackRailOuter: '#3a2a1a',
+      trackRailInner: '#5a5a5a',
+      trackSleeper: '#6a5a45',
+      trackBed: '#4a3a2a',
       trainBody: '#3a4a5a',
-      trainDoor: '#2a3a4a',
-      trainWheel: '#2a2a2a',
+      trainCabin: '#1a2a3a',
+      trainWheel: '#1a1a1a',
+      trainWindow: '#2a5a8a',
       carriageBody: '#5a6a7a',
-      carriageDoor: '#4a5a6a',
+      carriageCabin: '#4a5a6a',
       truckBody: '#6a5a4a',
       truckCab: '#7a6a5a',
       truckWheel: '#1a1a1a',
-      accent1: '#c4a574',
-      accent2: '#d4a574',
-      accent3: '#e4b584',
+      accent1: '#d4a574',
+      accent2: '#e4b584',
+      accent3: '#c4a574',
+      attention: '#d4a574',
+      good: '#8ab885',
+      warning: '#c85a5a',
     };
 
-    // ===== GAME STATE =====
+    // ==================== GAME STATE ====================
+
     const gameState = {
+      // Quarries (grid-based block storage)
       topQuarry: [],
       bottomQuarry: [],
+
+      // Train system
       train: {
         state: 'DOCKED_AT_TOP',
         waypointIndex: 0,
-        speed: 0,
-        haltCounter: 0,
-        haltDuration: 40,
+        lerpProgress: 0,  // 0-1 interpolation between waypoints
+        speed: CONFIG.TRAIN_SPEED,
+        dockCounter: 0,
         carriages: [
           { blocks: 0, capacity: CONFIG.CARRIAGE_CAPACITY },
           { blocks: 0, capacity: CONFIG.CARRIAGE_CAPACITY },
@@ -327,45 +395,133 @@
         ],
         x: 0,
         y: 0,
+        angle: 0,
       },
+
+      // Crane systems
       topCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK },
       bottomCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK },
+
+      // Trucks
       trucks: [],
+
+      // Statistics
       stats: {
         blocksMoved: 0,
         reversalCount: 0,
         lastTopQuarryCount: 0,
         lastBottomQuarryCount: 0,
+        frameCount: 0,
+        fpsCounter: 0,
+        lastFpsTime: Date.now(),
       },
+
       isReversed: false,
-      frameCount: 0,
       uiUpdateCounter: 0,
     };
 
-    // ===== TRACK WAYPOINTS (GRID-BASED RECTANGULAR LOOP) =====
+    // ==================== TRACK WAYPOINTS (RECTANGULAR LOOP) ====================
+    // 20 waypoints forming a rectangular loop
     const TRACK_WAYPOINTS = [
-      // Top row, going right
-      { gx: 10, gy: 2 }, { gx: 11, gy: 2 }, { gx: 12, gy: 2 }, { gx: 13, gy: 2 },
-      { gx: 14, gy: 2 }, { gx: 15, gy: 2 }, { gx: 16, gy: 2 }, { gx: 17, gy: 2 },
-      { gx: 18, gy: 2 },
-      // Right column, going down
-      { gx: 18, gy: 3 }, { gx: 18, gy: 4 }, { gx: 18, gy: 5 }, { gx: 18, gy: 6 },
-      { gx: 18, gy: 7 }, { gx: 18, gy: 8 },
-      // Bottom row, going left
-      { gx: 17, gy: 8 }, { gx: 16, gy: 8 }, { gx: 15, gy: 8 }, { gx: 14, gy: 8 },
-      { gx: 13, gy: 8 }, { gx: 12, gy: 8 }, { gx: 11, gy: 8 }, { gx: 10, gy: 8 },
-      // Left column, going up
-      { gx: 10, gy: 7 }, { gx: 10, gy: 6 }, { gx: 10, gy: 5 }, { gx: 10, gy: 4 },
-      { gx: 10, gy: 3 },
+      // Top straight (left to right)
+      { gx: 1, gy: 3 },   // 0
+      { gx: 3, gy: 3 },   // 1
+      { gx: 5, gy: 3 },   // 2
+      { gx: 6, gy: 3 },   // 3 - TOP STATION
+      { gx: 7, gy: 3 },   // 4
+      { gx: 9, gy: 3 },   // 5
+      { gx: 12, gy: 3 },  // 6
+      { gx: 14, gy: 3 },  // 7
+      // Right straight (top to bottom)
+      { gx: 14, gy: 4 },  // 8
+      { gx: 14, gy: 5 },  // 9
+      { gx: 14, gy: 6 },  // 10
+      { gx: 14, gy: 7 },  // 11
+      { gx: 14, gy: 8 },  // 12
+      // Bottom straight (right to left)
+      { gx: 12, gy: 8 },  // 13
+      { gx: 9, gy: 8 },   // 14
+      { gx: 7, gy: 8 },   // 15
+      { gx: 6, gy: 8 },   // 16 - BOTTOM STATION
+      { gx: 5, gy: 8 },   // 17
+      { gx: 3, gy: 8 },   // 18
+      { gx: 1, gy: 8 },   // 19
+      // Left straight (bottom to top)
+      { gx: 1, gy: 7 },   // 20
+      { gx: 1, gy: 6 },   // 21
+      { gx: 1, gy: 5 },   // 22
+      { gx: 1, gy: 4 },   // 23
     ];
 
-    // Station docking positions on track
     const STATIONS = {
-      top: { waypointIndex: 0, gx: 10, gy: 2 },
-      bottom: { waypointIndex: 15, gx: 18, gy: 8 },
+      top: { waypointIndex: 3, gx: 6, gy: 3 },
+      bottom: { waypointIndex: 16, gx: 6, gy: 8 },
     };
 
-    // ===== CANVAS SETUP =====
+    // ==================== TRUCK PATHS (LOOPED QUARRY ROUTES) ====================
+
+    let truckPaths = {
+      topQuarryLoop: [],
+      bottomQuarryLoop: [],
+    };
+
+    function buildTruckPaths() {
+      // TOP QUARRY LOOP (figure-8 pattern through quarry area)
+      // Loop starts at station, goes down-left to quarry, loops through it, returns
+      truckPaths.topQuarryLoop = [
+        { gx: 6, gy: 3 },   // Start at top station
+        { gx: 5, gy: 3 },
+        { gx: 4, gy: 3 },
+        { gx: 3, gy: 3 },
+        { gx: 2, gy: 3 },
+        { gx: 2, gy: 2 },   // Enter quarry top
+        { gx: 3, gy: 2 },
+        { gx: 5, gy: 2 },
+        { gx: 8, gy: 2 },   // Collection loop - right
+        { gx: 11, gy: 2 },
+        { gx: 13, gy: 2 },
+        { gx: 13, gy: 1 },  // Collection zone - center
+        { gx: 11, gy: 1 },  // Random collection happens here
+        { gx: 8, gy: 1 },
+        { gx: 5, gy: 1 },
+        { gx: 3, gy: 1 },
+        { gx: 2, gy: 1 },   // Exit quarry
+        { gx: 2, gy: 2 },
+        { gx: 3, gy: 3 },
+        { gx: 4, gy: 3 },
+        { gx: 5, gy: 3 },
+        { gx: 6, gy: 3 },   // Return to station
+      ];
+
+      // BOTTOM QUARRY LOOP (mirrors top quarry)
+      truckPaths.bottomQuarryLoop = [
+        { gx: 6, gy: 8 },   // Start at bottom station
+        { gx: 5, gy: 8 },
+        { gx: 4, gy: 8 },
+        { gx: 3, gy: 8 },
+        { gx: 2, gy: 8 },
+        { gx: 2, gy: 9 },   // Enter quarry bottom
+        { gx: 3, gy: 9 },
+        { gx: 5, gy: 9 },
+        { gx: 8, gy: 9 },   // Collection loop - right
+        { gx: 11, gy: 9 },
+        { gx: 13, gy: 9 },
+        { gx: 13, gy: 10 }, // Collection zone - center
+        { gx: 11, gy: 10 }, // Random collection happens here
+        { gx: 8, gy: 10 },
+        { gx: 5, gy: 10 },
+        { gx: 3, gy: 10 },
+        { gx: 2, gy: 10 },  // Exit quarry
+        { gx: 2, gy: 9 },
+        { gx: 3, gy: 8 },
+        { gx: 4, gy: 8 },
+        { gx: 5, gy: 8 },
+        { gx: 6, gy: 8 },   // Return to station
+      ];
+    }
+
+    // ==================== CANVAS & RENDERING SETUP ====================
+
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
@@ -373,7 +529,8 @@
     canvas.width = GRID.CANVAS_WIDTH;
     canvas.height = GRID.CANVAS_HEIGHT;
 
-    // ===== GRID UTILITY FUNCTIONS =====
+    // ==================== UTILITY FUNCTIONS ====================
+
     function gridToPixels(gx, gy) {
       return {
         px: gx * GRID.CELL_SIZE,
@@ -381,65 +538,6 @@
       };
     }
 
-    function lerpGridPos(wp1, wp2, t) {
-      return {
-        px: (wp1.gx + (wp2.gx - wp1.gx) * t) * GRID.CELL_SIZE,
-        py: (wp1.gy + (wp2.gy - wp1.gy) * t) * GRID.CELL_SIZE,
-      };
-    }
-
-    // ===== INITIALIZATION =====
-    function initializeQuarries() {
-      gameState.topQuarry = [];
-      for (let x = 0; x < CONFIG.QUARRY_GRID_WIDTH; x++) {
-        for (let y = 0; y < CONFIG.QUARRY_GRID_HEIGHT; y++) {
-          const height = 4 + Math.floor(Math.random() * 3);
-          gameState.topQuarry.push({ x, y, height, type: 'ore', age: 0 });
-        }
-      }
-
-      gameState.bottomQuarry = [];
-      for (let x = 0; x < CONFIG.QUARRY_GRID_WIDTH; x++) {
-        for (let y = 0; y < CONFIG.QUARRY_GRID_HEIGHT; y++) {
-          gameState.bottomQuarry.push({ x, y, height: 0, type: 'ore', age: 0 });
-        }
-      }
-
-      gameState.stats.lastTopQuarryCount = getTotalQuarryHeight(gameState.topQuarry);
-      gameState.stats.lastBottomQuarryCount = getTotalQuarryHeight(gameState.bottomQuarry);
-    }
-
-    function initializeTrucks() {
-      gameState.trucks = [];
-
-      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
-        gameState.trucks.push({
-          id: 'T' + (i + 1),
-          station: 'top',
-          state: 'IDLE_AT_STATION',
-          gx: 4 + i * 0.5,
-          gy: 2,
-          blocks: 0,
-          pathIndex: 0,
-          waitTimer: Math.random() * 40,
-        });
-      }
-
-      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
-        gameState.trucks.push({
-          id: 'B' + (i + 1),
-          station: 'bottom',
-          state: 'IDLE_AT_STATION',
-          gx: 4 + i * 0.5,
-          gy: 8,
-          blocks: 0,
-          pathIndex: 0,
-          waitTimer: Math.random() * 40,
-        });
-      }
-    }
-
-    // ===== UTILITY FUNCTIONS =====
     function getTotalQuarryHeight(quarry) {
       return quarry.reduce((sum, block) => sum + block.height, 0);
     }
@@ -463,233 +561,422 @@
       return colors[Math.min(height, 8)];
     }
 
-    // ===== TRUCK PATHS (GRID-BASED L-SHAPED) =====
-    const truckPaths = {
-      topStationToTopQuarry: [],
-      topQuarryToTopStation: [],
-      bottomStationToBottomQuarry: [],
-      bottomQuarryToBottomStation: [],
-    };
+    function distance(x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
 
-    function buildTruckPaths() {
-      // Top station to top quarry (L-shaped: right then down)
-      truckPaths.topStationToTopQuarry = [];
-      for (let x = 4; x <= 14; x += 1) {
-        truckPaths.topStationToTopQuarry.push({ gx: x, gy: 2 });
+    // ==================== INITIALIZATION ====================
+
+    function initializeQuarries() {
+      gameState.topQuarry = [];
+      for (let x = 0; x < CONFIG.QUARRY_GRID_WIDTH; x++) {
+        for (let y = 0; y < CONFIG.QUARRY_GRID_HEIGHT; y++) {
+          const height = 4 + Math.floor(Math.random() * 4);
+          gameState.topQuarry.push({ x, y, height, type: 'ore' });
+        }
       }
-      for (let y = 2; y <= 3; y += 1) {
-        truckPaths.topStationToTopQuarry.push({ gx: 14, gy: y });
+
+      gameState.bottomQuarry = [];
+      for (let x = 0; x < CONFIG.QUARRY_GRID_WIDTH; x++) {
+        for (let y = 0; y < CONFIG.QUARRY_GRID_HEIGHT; y++) {
+          gameState.bottomQuarry.push({ x, y, height: 0, type: 'ore' });
+        }
       }
-      truckPaths.topQuarryToTopStation = [...truckPaths.topStationToTopQuarry].reverse();
 
-      // Bottom station to bottom quarry (L-shaped: right then up)
-      truckPaths.bottomStationToBottomQuarry = [];
-      for (let x = 4; x <= 14; x += 1) {
-        truckPaths.bottomStationToBottomQuarry.push({ gx: x, gy: 8 });
+      gameState.stats.lastTopQuarryCount = getTotalQuarryHeight(gameState.topQuarry);
+      gameState.stats.lastBottomQuarryCount = getTotalQuarryHeight(gameState.bottomQuarry);
+    }
+
+    function initializeTrucks() {
+      gameState.trucks = [];
+
+      // Top station trucks
+      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
+        gameState.trucks.push({
+          id: 'T' + (i + 1),
+          station: 'top',
+          state: 'IDLE_AT_STATION',
+          gx: 4 + i * 0.3,
+          gy: 3.5,
+          blocks: 0,
+          pathIndex: 0,
+          lerpProgress: 0,
+          waitTimer: Math.random() * 40,
+          collectTimer: 0,
+          speed: CONFIG.TRUCK_SPEED,
+        });
       }
-      for (let y = 8; y >= 7; y -= 1) {
-        truckPaths.bottomStationToBottomQuarry.push({ gx: 14, gy: y });
+
+      // Bottom station trucks
+      for (let i = 0; i < CONFIG.TRUCK_COUNT_PER_STATION; i++) {
+        gameState.trucks.push({
+          id: 'B' + (i + 1),
+          station: 'bottom',
+          state: 'IDLE_AT_STATION',
+          gx: 4 + i * 0.3,
+          gy: 8.5,
+          blocks: 0,
+          pathIndex: 0,
+          lerpProgress: 0,
+          waitTimer: Math.random() * 40,
+          collectTimer: 0,
+          speed: CONFIG.TRUCK_SPEED,
+        });
       }
-      truckPaths.bottomQuarryToBottomStation = [...truckPaths.bottomStationToBottomQuarry].reverse();
     }
 
-    // ===== RENDERING HELPERS =====
-    function drawRect(x, y, w, h, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(Math.round(x), Math.round(y), w, h);
-    }
+    // ==================== RENDERING SYSTEM ====================
 
-    function drawStrokedRect(x, y, w, h, fillColor, strokeColor, lineWidth = 1) {
-      ctx.fillStyle = fillColor;
-      ctx.fillRect(Math.round(x), Math.round(y), w, h);
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = lineWidth;
-      ctx.strokeRect(Math.round(x), Math.round(y), w, h);
-    }
+    function drawBackground() {
+      // Main background
+      ctx.fillStyle = COLOURS.canvas_bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    function drawCircle(x, y, r, color) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(Math.round(x), Math.round(y), r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    function drawLine(x1, y1, x2, y2, color, width = 1) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      ctx.moveTo(Math.round(x1), Math.round(y1));
-      ctx.lineTo(Math.round(x2), Math.round(y2));
-      ctx.stroke();
-    }
-
-    function drawText(text, x, y, color = '#e8e0d5', size = 10, align = 'left') {
-      ctx.fillStyle = color;
-      ctx.font = `${size}px monospace`;
-      ctx.textAlign = align;
-      ctx.fillText(text, x, y);
-    }
-
-    function drawGridCell(gx, gy, w, h, color) {
-      const { px, py } = gridToPixels(gx, gy);
-      drawRect(px, py, w * GRID.CELL_SIZE, h * GRID.CELL_SIZE, color);
-    }
-
-    // ===== RENDERING SYSTEM =====
-    function drawQuarries() {
-      const topQuarryGx = 8;
-      const topQuarryGy = 1;
-      const bottomQuarryGx = 8;
-      const bottomQuarryGy = 6;
-
-      // Draw top quarry
-      drawGridCell(topQuarryGx, topQuarryGy, 12, 4, '#3a2a1a');
-      gameState.topQuarry.forEach(block => {
-        const localX = block.x % 3;
-        const localY = block.y % 4;
-        const gx = topQuarryGx + (block.x / 3);
-        const gy = topQuarryGy + (block.y / 4);
-        const { px, py } = gridToPixels(gx, gy);
-        const color = getBlockColor(block.height);
-        drawRect(px + localX * 10, py + localY * 10, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
-      });
-      drawText('TOP QUARRY', topQuarryGx * GRID.CELL_SIZE, topQuarryGy * GRID.CELL_SIZE - 8, COLOURS.accent1, 10);
-
-      // Draw bottom quarry
-      drawGridCell(bottomQuarryGx, bottomQuarryGy, 12, 4, '#3a2a1a');
-      gameState.bottomQuarry.forEach(block => {
-        const localX = block.x % 3;
-        const localY = block.y % 4;
-        const gx = bottomQuarryGx + (block.x / 3);
-        const gy = bottomQuarryGy + (block.y / 4);
-        const { px, py } = gridToPixels(gx, gy);
-        const color = getBlockColor(block.height);
-        drawRect(px + localX * 10, py + localY * 10, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
-      });
-      drawText('BOTTOM QUARRY', bottomQuarryGx * GRID.CELL_SIZE, bottomQuarryGy * GRID.CELL_SIZE - 8, COLOURS.accent1, 10);
+      // Terrain areas (subtle shading)
+      ctx.fillStyle = COLOURS.terrain_grass;
+      ctx.fillRect(0, 0, canvas.width, 150);  // Top area
+      ctx.fillRect(0, 450, canvas.width, 150); // Bottom area
     }
 
     function drawTrack() {
-      // Draw track as rectangular loop
-      const trackWaypoints = TRACK_WAYPOINTS;
+      const waypoints = TRACK_WAYPOINTS;
 
-      // Outer border
-      ctx.strokeStyle = COLOURS.trackWood;
-      ctx.lineWidth = 10;
+      // Background track bed
+      ctx.strokeStyle = COLOURS.trackBed;
+      ctx.lineWidth = 16;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.beginPath();
-      let wp = trackWaypoints[0];
-      let pos = gridToPixels(wp.gx, wp.gy);
-      ctx.moveTo(pos.px + GRID.CELL_SIZE / 2, pos.py + GRID.CELL_SIZE / 2);
-
-      for (let i = 1; i < trackWaypoints.length; i++) {
-        wp = trackWaypoints[i];
-        pos = gridToPixels(wp.gx, wp.gy);
-        ctx.lineTo(pos.px + GRID.CELL_SIZE / 2, pos.py + GRID.CELL_SIZE / 2);
-      }
+      waypoints.forEach((wp, i) => {
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const x = pos.px + GRID.CELL_SIZE / 2;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
       ctx.closePath();
       ctx.stroke();
 
-      // Inner steel rail
-      ctx.strokeStyle = COLOURS.trackSteel;
-      ctx.lineWidth = 2;
+      // Left rail
+      ctx.strokeStyle = COLOURS.trackRailOuter;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      waypoints.forEach((wp, i) => {
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const x = pos.px + GRID.CELL_SIZE / 2 - 5;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
       ctx.stroke();
 
-      // Sleepers
-      ctx.strokeStyle = COLOURS.trackWood;
+      // Right rail
+      ctx.beginPath();
+      waypoints.forEach((wp, i) => {
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const x = pos.px + GRID.CELL_SIZE / 2 + 5;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      // Inner rail highlights
+      ctx.strokeStyle = COLOURS.trackRailInner;
       ctx.lineWidth = 1;
-      for (let i = 0; i < trackWaypoints.length; i++) {
-        wp = trackWaypoints[i];
-        const nextWp = trackWaypoints[(i + 1) % trackWaypoints.length];
-        const { px, py } = gridToPixels(wp.gx, wp.gy);
-        const { px: nextPx, py: nextPy } = gridToPixels(nextWp.gx, nextWp.gy);
+      ctx.beginPath();
+      waypoints.forEach((wp, i) => {
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const x = pos.px + GRID.CELL_SIZE / 2 - 4;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
 
-        const perpX = -(nextPy - py) / 20;
-        const perpY = (nextPx - px) / 20;
+      ctx.beginPath();
+      waypoints.forEach((wp, i) => {
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const x = pos.px + GRID.CELL_SIZE / 2 + 4;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
 
-        drawLine(
-          px + GRID.CELL_SIZE / 2 - perpX,
-          py + GRID.CELL_SIZE / 2 - perpY,
-          px + GRID.CELL_SIZE / 2 + perpX,
-          py + GRID.CELL_SIZE / 2 + perpY,
-          COLOURS.trackWood,
-          1
-        );
+      // Sleepers (railroad ties)
+      ctx.strokeStyle = COLOURS.trackSleeper;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < waypoints.length; i++) {
+        const wp = waypoints[i];
+        const nextWp = waypoints[(i + 1) % waypoints.length];
+        const pos = gridToPixels(wp.gx, wp.gy);
+        const nextPos = gridToPixels(nextWp.gx, nextWp.gy);
+
+        const x = pos.px + GRID.CELL_SIZE / 2;
+        const y = pos.py + GRID.CELL_SIZE / 2;
+        const nextX = nextPos.px + GRID.CELL_SIZE / 2;
+        const nextY = nextPos.py + GRID.CELL_SIZE / 2;
+
+        const dx = nextX - x;
+        const dy = nextY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0) {
+          const perpX = (-dy / dist) * 6;
+          const perpY = (dx / dist) * 6;
+
+          ctx.beginPath();
+          ctx.moveTo(x - perpX, y - perpY);
+          ctx.lineTo(x + perpX, y + perpY);
+          ctx.stroke();
+        }
       }
+    }
+
+    function drawQuarries() {
+      // Top quarry background
+      ctx.fillStyle = COLOURS.quarry_bg;
+      ctx.fillRect(
+        1 * GRID.CELL_SIZE,
+        0 * GRID.CELL_SIZE,
+        13 * GRID.CELL_SIZE,
+        3 * GRID.CELL_SIZE
+      );
+      ctx.strokeStyle = COLOURS.quarry_rock;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        1 * GRID.CELL_SIZE,
+        0 * GRID.CELL_SIZE,
+        13 * GRID.CELL_SIZE,
+        3 * GRID.CELL_SIZE
+      );
+
+      // Draw top quarry blocks
+      gameState.topQuarry.forEach(block => {
+        const blockWidth = 12;
+        const blockHeight = 3;
+        const localX = (block.x % 3) * (GRID.CELL_SIZE / 3);
+        const localY = (block.y % 4) * (GRID.CELL_SIZE / 4);
+        const gx = 1 + Math.floor(block.x / 3);
+        const gy = 0 + Math.floor(block.y / 4);
+        const pos = gridToPixels(gx, gy);
+
+        const color = getBlockColor(block.height);
+        ctx.fillStyle = color;
+        ctx.fillRect(pos.px + localX + 1, pos.py + localY + 1, blockWidth - 2, blockHeight - 1);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(pos.px + localX + 1, pos.py + localY + 1, blockWidth - 2, blockHeight - 1);
+      });
+
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('TOP QUARRY', 1 * GRID.CELL_SIZE + 5, 150 - 8);
+
+      // Bottom quarry background
+      ctx.fillStyle = COLOURS.quarry_bg;
+      ctx.fillRect(
+        1 * GRID.CELL_SIZE,
+        9 * GRID.CELL_SIZE,
+        13 * GRID.CELL_SIZE,
+        3 * GRID.CELL_SIZE
+      );
+      ctx.strokeStyle = COLOURS.quarry_rock;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        1 * GRID.CELL_SIZE,
+        9 * GRID.CELL_SIZE,
+        13 * GRID.CELL_SIZE,
+        3 * GRID.CELL_SIZE
+      );
+
+      // Draw bottom quarry blocks
+      gameState.bottomQuarry.forEach(block => {
+        const blockWidth = 12;
+        const blockHeight = 3;
+        const localX = (block.x % 3) * (GRID.CELL_SIZE / 3);
+        const localY = (block.y % 4) * (GRID.CELL_SIZE / 4);
+        const gx = 1 + Math.floor(block.x / 3);
+        const gy = 9 + Math.floor(block.y / 4);
+        const pos = gridToPixels(gx, gy);
+
+        const color = getBlockColor(block.height);
+        ctx.fillStyle = color;
+        ctx.fillRect(pos.px + localX + 1, pos.py + localY + 1, blockWidth - 2, blockHeight - 1);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(pos.px + localX + 1, pos.py + localY + 1, blockWidth - 2, blockHeight - 1);
+      });
+
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.fillText('BOTTOM QUARRY', 1 * GRID.CELL_SIZE + 5, 450 + 8 + GRID.CELL_SIZE);
     }
 
     function drawStations() {
       // Top station
-      drawGridCell(2, 2, 2, 1, COLOURS.stationBg);
-      drawRect(2 * GRID.CELL_SIZE + 2, 2 * GRID.CELL_SIZE + GRID.CELL_SIZE - 10, 2 * GRID.CELL_SIZE - 4, 10, COLOURS.stationPlatform);
-      drawText('TOP', 3 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 8, COLOURS.accent1, 10, 'center');
+      ctx.fillStyle = COLOURS.stationBg;
+      ctx.fillRect(5 * GRID.CELL_SIZE + 5, 2.8 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 10, 0.4 * GRID.CELL_SIZE);
+      ctx.strokeStyle = COLOURS.stationBorder;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(5 * GRID.CELL_SIZE + 5, 2.8 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 10, 0.4 * GRID.CELL_SIZE);
+
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('TOP STATION', 6 * GRID.CELL_SIZE, 2.7 * GRID.CELL_SIZE - 5);
 
       // Bottom station
-      drawGridCell(2, 8, 2, 1, COLOURS.stationBg);
-      drawRect(2 * GRID.CELL_SIZE + 2, 8 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 4, 10, COLOURS.stationPlatform);
-      drawText('BOT', 3 * GRID.CELL_SIZE, 8 * GRID.CELL_SIZE - 8, COLOURS.accent1, 10, 'center');
+      ctx.fillStyle = COLOURS.stationBg;
+      ctx.fillRect(5 * GRID.CELL_SIZE + 5, 8.2 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 10, 0.4 * GRID.CELL_SIZE);
+      ctx.strokeStyle = COLOURS.stationBorder;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(5 * GRID.CELL_SIZE + 5, 8.2 * GRID.CELL_SIZE, 2 * GRID.CELL_SIZE - 10, 0.4 * GRID.CELL_SIZE);
+
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.fillText('BOTTOM STATION', 6 * GRID.CELL_SIZE, 8.1 * GRID.CELL_SIZE - 5);
     }
 
     function drawCranes() {
-      // Top crane at grid (5, 2)
-      const topCraneX = 5 * GRID.CELL_SIZE + GRID.CELL_SIZE / 2;
-      const topCraneY = 2 * GRID.CELL_SIZE;
+      // Top crane
+      const topCranePos = gridToPixels(2, 3);
+      const tcx = topCranePos.px + GRID.CELL_SIZE / 2;
+      const tcy = topCranePos.py + GRID.CELL_SIZE / 2;
 
-      drawRect(topCraneX - 15, topCraneY, 30, 60, COLOURS.craneMetal);
-      drawRect(topCraneX - 12, topCraneY - 5, 24, 5, COLOURS.craneArm);
+      // Base
+      ctx.fillStyle = COLOURS.craneBase;
+      ctx.fillRect(tcx - 12, tcy + 10, 24, 15);
+      // Column
+      ctx.fillStyle = COLOURS.craneMetal;
+      ctx.fillRect(tcx - 8, tcy - 30, 16, 40);
+      // Arm
+      ctx.fillStyle = COLOURS.craneArm;
+      ctx.fillRect(tcx - 10, tcy - 8, 20, 8);
 
+      // Blocks stacked on crane
       for (let i = 0; i < gameState.topCrane.blocks; i++) {
-        drawRect(topCraneX - 10, topCraneY - 10 - i * 7, 20, 6, COLOURS.blockLevel4);
+        ctx.fillStyle = COLOURS.blockLevel4;
+        ctx.fillRect(tcx - 8, tcy - 12 - i * 6, 16, 5);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tcx - 8, tcy - 12 - i * 6, 16, 5);
       }
-      drawText('Top Crane', topCraneX, topCraneY + 70, COLOURS.accent1, 8, 'center');
 
-      // Bottom crane at grid (5, 8)
-      const bottomCraneX = 5 * GRID.CELL_SIZE + GRID.CELL_SIZE / 2;
-      const bottomCraneY = 8 * GRID.CELL_SIZE;
+      ctx.fillStyle = COLOURS.accent3;
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Crane', tcx, tcy + 35);
 
-      drawRect(bottomCraneX - 15, bottomCraneY, 30, 60, COLOURS.craneMetal);
-      drawRect(bottomCraneX - 12, bottomCraneY + 55, 24, 5, COLOURS.craneArm);
+      // Bottom crane (mirrors top)
+      const botCranePos = gridToPixels(2, 8);
+      const bcx = botCranePos.px + GRID.CELL_SIZE / 2;
+      const bcy = botCranePos.py + GRID.CELL_SIZE / 2;
+
+      ctx.fillStyle = COLOURS.craneBase;
+      ctx.fillRect(bcx - 12, bcy - 25, 24, 15);
+      ctx.fillStyle = COLOURS.craneMetal;
+      ctx.fillRect(bcx - 8, bcy - 40, 16, 40);
+      ctx.fillStyle = COLOURS.craneArm;
+      ctx.fillRect(bcx - 10, bcx - bcy, 20, 8);
 
       for (let i = 0; i < gameState.bottomCrane.blocks; i++) {
-        drawRect(bottomCraneX - 10, bottomCraneY + 10 + i * 7, 20, 6, COLOURS.blockLevel4);
+        ctx.fillStyle = COLOURS.blockLevel4;
+        ctx.fillRect(bcx - 8, bcy + 8 + i * 6, 16, 5);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bcx - 8, bcy + 8 + i * 6, 16, 5);
       }
-      drawText('Bottom Crane', bottomCraneX, bottomCraneY - 10, COLOURS.accent1, 8, 'center');
+
+      ctx.fillStyle = COLOURS.accent3;
+      ctx.fillText('Crane', bcx, bcy - 50);
     }
 
     function drawTrain() {
-      const waypoint = TRACK_WAYPOINTS[gameState.train.waypointIndex];
-      const nextWaypoint = TRACK_WAYPOINTS[(gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length];
-      const pos = lerpGridPos(waypoint, nextWaypoint, 0.5);
+      const currentWp = TRACK_WAYPOINTS[gameState.train.waypointIndex];
+      const nextWp = TRACK_WAYPOINTS[(gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length];
 
-      const trainX = pos.px + GRID.CELL_SIZE / 2;
-      const trainY = pos.py + GRID.CELL_SIZE / 2;
+      const currentPos = gridToPixels(currentWp.gx, currentWp.gy);
+      const nextPos = gridToPixels(nextWp.gx, nextWp.gy);
 
-      // Locomotive
-      drawStrokedRect(trainX - 20, trainY - 10, 40, 20, COLOURS.trainBody, '#2a2a2a', 2);
-      drawRect(trainX - 8, trainY - 6, 8, 12, COLOURS.trainDoor);
-      drawCircle(trainX - 12, trainY + 8, 4, COLOURS.trainWheel);
-      drawCircle(trainX + 12, trainY + 8, 4, COLOURS.trainWheel);
+      const t = gameState.train.lerpProgress;
+      const trainX = currentPos.px + GRID.CELL_SIZE / 2 + (nextPos.px - currentPos.px) * t;
+      const trainY = currentPos.py + GRID.CELL_SIZE / 2 + (nextPos.py - currentPos.py) * t;
 
-      // Cargo display on locomotive
+      // Draw locomotive
+      ctx.fillStyle = COLOURS.trainBody;
+      ctx.fillRect(trainX - 16, trainY - 9, 32, 18);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(trainX - 16, trainY - 9, 32, 18);
+
+      // Cabin
+      ctx.fillStyle = COLOURS.trainCabin;
+      ctx.fillRect(trainX - 10, trainY - 6, 10, 12);
+
+      // Windows
+      ctx.fillStyle = COLOURS.trainWindow;
+      ctx.fillRect(trainX - 8, trainY - 4, 4, 4);
+      ctx.fillRect(trainX - 8, trainY + 2, 4, 4);
+
+      // Wheels
+      ctx.fillStyle = COLOURS.trainWheel;
+      ctx.beginPath();
+      ctx.arc(trainX - 10, trainY + 9, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(trainX + 10, trainY + 9, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cargo indicator (total)
       const totalCargo = getTotalTrainCargo();
-      drawText(totalCargo, trainX, trainY - 18, COLOURS.accent1, 12, 'center');
+      ctx.fillStyle = COLOURS.accent1;
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(totalCargo, trainX, trainY - 18);
 
-      // Draw carriages following the train
-      for (let i = 1; i <= CONFIG.CARRIAGE_COUNT; i++) {
-        const carriage = gameState.train.carriages[i - 1];
-        const carriageWaypoint = TRACK_WAYPOINTS[(gameState.train.waypointIndex - i + TRACK_WAYPOINTS.length) % TRACK_WAYPOINTS.length];
-        const carriagePos = gridToPixels(carriageWaypoint.gx, carriageWaypoint.gy);
+      // Draw carriages behind the train
+      for (let c = 1; c <= CONFIG.CARRIAGE_COUNT; c++) {
+        const carriageWpIdx = (gameState.train.waypointIndex - c + TRACK_WAYPOINTS.length) % TRACK_WAYPOINTS.length;
+        const carriageWp = TRACK_WAYPOINTS[carriageWpIdx];
+        const nextCarriageWp = TRACK_WAYPOINTS[(carriageWpIdx + 1) % TRACK_WAYPOINTS.length];
 
-        const carriageX = carriagePos.px + GRID.CELL_SIZE / 2;
-        const carriageY = carriagePos.py + GRID.CELL_SIZE / 2;
+        const carriageCurrentPos = gridToPixels(carriageWp.gx, carriageWp.gy);
+        const carriageNextPos = gridToPixels(nextCarriageWp.gx, nextCarriageWp.gy);
 
-        // Carriage body
-        drawStrokedRect(carriageX - 18, carriageY - 10, 36, 20, COLOURS.carriageBody, '#2a2a2a', 2);
-        drawRect(carriageX - 6, carriageY - 6, 8, 12, COLOURS.carriageDoor);
-        drawCircle(carriageX - 12, carriageY + 8, 4, COLOURS.trainWheel);
-        drawCircle(carriageX + 12, carriageY + 8, 4, COLOURS.trainWheel);
+        const carriageX = carriageCurrentPos.px + GRID.CELL_SIZE / 2 + (carriageNextPos.px - carriageCurrentPos.px) * t;
+        const carriageY = carriageCurrentPos.py + GRID.CELL_SIZE / 2 + (carriageNextPos.py - carriageCurrentPos.py) * t;
 
-        // Cargo count on carriage
-        drawText(carriage.blocks, carriageX, carriageY - 18, COLOURS.accent2, 11, 'center');
+        // Carriage body (slightly different color)
+        ctx.fillStyle = COLOURS.carriageBody;
+        ctx.fillRect(carriageX - 15, carriageY - 8, 30, 16);
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(carriageX - 15, carriageY - 8, 30, 16);
+
+        // Door
+        ctx.fillStyle = COLOURS.carriageCabin;
+        ctx.fillRect(carriageX - 6, carriageY - 5, 8, 10);
+
+        // Wheels
+        ctx.fillStyle = COLOURS.trainWheel;
+        ctx.beginPath();
+        ctx.arc(carriageX - 10, carriageY + 8, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(carriageX + 10, carriageY + 8, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cargo indicator (per carriage)
+        const carriage = gameState.train.carriages[c - 1];
+        ctx.fillStyle = COLOURS.accent2;
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(carriage.blocks, carriageX, carriageY - 15);
       }
 
       gameState.train.x = trainX;
@@ -698,77 +985,96 @@
 
     function drawTrucks() {
       gameState.trucks.forEach(truck => {
-        const { px, py } = gridToPixels(truck.gx, truck.gy);
+        // Calculate truck position with lerp
+        const path = truck.station === 'top' ? truckPaths.topQuarryLoop : truckPaths.bottomQuarryLoop;
+        const currentPathWp = path[truck.pathIndex];
+        const nextPathWp = path[(truck.pathIndex + 1) % path.length];
 
-        drawStrokedRect(px - 8, py - 5, 16, 10, COLOURS.truckBody, '#3a2a1a', 1);
-        drawRect(px - 6, py - 5, 6, 5, COLOURS.truckCab);
-        drawCircle(px - 5, py + 5, 2.5, COLOURS.truckWheel);
-        drawCircle(px + 5, py + 5, 2.5, COLOURS.truckWheel);
+        const t = truck.lerpProgress;
+        const truckX = (currentPathWp.gx + (nextPathWp.gx - currentPathWp.gx) * t) * GRID.CELL_SIZE + GRID.CELL_SIZE / 2;
+        const truckY = (currentPathWp.gy + (nextPathWp.gy - currentPathWp.gy) * t) * GRID.CELL_SIZE + GRID.CELL_SIZE / 2;
 
+        // Truck body
+        ctx.fillStyle = COLOURS.truckBody;
+        ctx.fillRect(truckX - 10, truckY - 6, 20, 12);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(truckX - 10, truckY - 6, 20, 12);
+
+        // Cab
+        ctx.fillStyle = COLOURS.truckCab;
+        ctx.fillRect(truckX - 8, truckY - 6, 8, 6);
+
+        // Wheels
+        ctx.fillStyle = COLOURS.truckWheel;
+        ctx.beginPath();
+        ctx.arc(truckX - 6, truckY + 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(truckX + 6, truckY + 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cargo indicator
         if (truck.blocks > 0) {
-          drawText(truck.blocks, px, py - 10, COLOURS.blockLevel3, 8, 'center');
+          ctx.fillStyle = COLOURS.accent1;
+          ctx.font = '8px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(truck.blocks, truckX, truckY - 12);
+        }
+
+        // Collection indicator (when collecting)
+        if (truck.collectTimer > 0) {
+          ctx.strokeStyle = COLOURS.attention;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(truckX, truckY, 12, 0, Math.PI * 2);
+          ctx.stroke();
         }
       });
     }
 
-    // ===== GAME LOGIC =====
+    // ==================== GAME LOGIC ====================
+
     function updateTrain() {
-      const SPEED = 0.5; // waypoints per frame (adjust for speed)
-      const HALT_DURATION = 40;
+      const HALT_FRAMES = CONFIG.STATION_HALT_FRAMES;
 
       switch (gameState.train.state) {
         case 'DOCKED_AT_TOP':
-          if (gameState.train.haltCounter < HALT_DURATION) {
-            gameState.train.haltCounter++;
-            gameState.train.speed = 0;
+          if (gameState.train.dockCounter < HALT_FRAMES) {
+            gameState.train.dockCounter++;
           } else {
-            gameState.train.state = 'DEPARTING_TOP';
-            gameState.train.haltCounter = 0;
-          }
-          break;
-
-        case 'DEPARTING_TOP':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex > 5) {
             gameState.train.state = 'EN_ROUTE';
+            gameState.train.dockCounter = 0;
           }
+          gameState.train.lerpProgress = 0;
           break;
 
         case 'EN_ROUTE':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex === STATIONS.bottom.waypointIndex) {
-            gameState.train.state = 'DOCKED_AT_BOTTOM';
-            gameState.train.haltCounter = 0;
+          gameState.train.lerpProgress += gameState.train.speed;
+
+          if (gameState.train.lerpProgress >= 1.0) {
+            gameState.train.lerpProgress = 0;
+            gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
+
+            if (gameState.train.waypointIndex === STATIONS.bottom.waypointIndex) {
+              gameState.train.state = 'DOCKED_AT_BOTTOM';
+              gameState.train.dockCounter = 0;
+            }
+            if (gameState.train.waypointIndex === STATIONS.top.waypointIndex) {
+              gameState.train.state = 'DOCKED_AT_TOP';
+              gameState.train.dockCounter = 0;
+            }
           }
           break;
 
         case 'DOCKED_AT_BOTTOM':
-          if (gameState.train.haltCounter < HALT_DURATION) {
-            gameState.train.haltCounter++;
-            gameState.train.speed = 0;
+          if (gameState.train.dockCounter < HALT_FRAMES) {
+            gameState.train.dockCounter++;
           } else {
-            gameState.train.state = 'DEPARTING_BOTTOM';
-            gameState.train.haltCounter = 0;
+            gameState.train.state = 'EN_ROUTE';
+            gameState.train.dockCounter = 0;
           }
-          break;
-
-        case 'DEPARTING_BOTTOM':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex < STATIONS.bottom.waypointIndex) {
-            gameState.train.state = 'EN_ROUTE_BACK';
-          }
-          break;
-
-        case 'EN_ROUTE_BACK':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex === STATIONS.top.waypointIndex) {
-            gameState.train.state = 'DOCKED_AT_TOP';
-            gameState.train.haltCounter = 0;
-          }
+          gameState.train.lerpProgress = 0;
           break;
       }
     }
@@ -776,6 +1082,9 @@
     function updateTrucks() {
       gameState.trucks.forEach(truck => {
         truck.waitTimer = Math.max(0, truck.waitTimer - 1);
+        truck.collectTimer = Math.max(0, truck.collectTimer - 1);
+
+        const path = truck.station === 'top' ? truckPaths.topQuarryLoop : truckPaths.bottomQuarryLoop;
 
         switch (truck.state) {
           case 'IDLE_AT_STATION':
@@ -788,6 +1097,7 @@
               if (hasBlocks && craneNotFull) {
                 truck.state = 'EN_ROUTE_TO_QUARRY';
                 truck.pathIndex = 0;
+                truck.lerpProgress = 0;
               } else {
                 truck.waitTimer = 30 + Math.random() * 40;
               }
@@ -795,23 +1105,31 @@
             break;
 
           case 'EN_ROUTE_TO_QUARRY':
-            const path = truck.station === 'top' ?
-              truckPaths.topStationToTopQuarry :
-              truckPaths.bottomStationToBottomQuarry;
+            truck.lerpProgress += truck.speed;
 
-            if (truck.pathIndex < path.length) {
-              const wp = path[truck.pathIndex];
-              truck.gx = wp.gx;
-              truck.gy = wp.gy;
-              truck.pathIndex++;
-            } else {
-              truck.state = 'PICKING_UP_BLOCK';
-              truck.waitTimer = 25;
+            if (truck.lerpProgress >= 1.0) {
+              truck.lerpProgress = 0;
+              truck.pathIndex = (truck.pathIndex + 1) % path.length;
+
+              // Check if reached collection zone
+              if (truck.pathIndex >= 10 && truck.pathIndex <= 15) {
+                // Random chance to collect in collection zone
+                if (Math.random() < 0.4) {
+                  truck.state = 'COLLECTING_BLOCK';
+                  truck.collectTimer = CONFIG.QUARRY_COLLECT_FRAMES;
+                }
+              }
+
+              // Check if back at station
+              if (truck.pathIndex === 0) {
+                truck.state = 'DEPOSITING_AT_CRANE';
+                truck.waitTimer = CONFIG.STATION_DEPOSIT_FRAMES;
+              }
             }
             break;
 
-          case 'PICKING_UP_BLOCK':
-            if (truck.waitTimer === 0) {
+          case 'COLLECTING_BLOCK':
+            if (truck.collectTimer === 0) {
               const quarry = truck.station === 'top' ? gameState.topQuarry : gameState.bottomQuarry;
               const availableBlocks = quarry.filter(b => b.height > 0);
 
@@ -819,29 +1137,11 @@
                 const block = availableBlocks[Math.floor(Math.random() * availableBlocks.length)];
                 block.height = Math.max(0, block.height - 1);
                 truck.blocks = CONFIG.BLOCKS_PER_TRUCK;
-                truck.state = 'EN_ROUTE_TO_STATION';
-                truck.pathIndex = 0;
+                truck.state = 'EN_ROUTE_TO_QUARRY';
                 gameState.stats.blocksMoved++;
               } else {
-                truck.state = 'IDLE_AT_STATION';
-                truck.waitTimer = 20;
+                truck.state = 'EN_ROUTE_TO_QUARRY';
               }
-            }
-            break;
-
-          case 'EN_ROUTE_TO_STATION':
-            const returnPath = truck.station === 'top' ?
-              truckPaths.topQuarryToTopStation :
-              truckPaths.bottomQuarryToBottomStation;
-
-            if (truck.pathIndex < returnPath.length) {
-              const wp = returnPath[truck.pathIndex];
-              truck.gx = wp.gx;
-              truck.gy = wp.gy;
-              truck.pathIndex++;
-            } else {
-              truck.state = 'DEPOSITING_AT_CRANE';
-              truck.waitTimer = 20;
             }
             break;
 
@@ -855,9 +1155,7 @@
               }
 
               truck.state = 'IDLE_AT_STATION';
-              truck.waitTimer = 15 + Math.random() * 30;
-              truck.gx = truck.station === 'top' ? 4 + Math.random() * 2 : 4 + Math.random() * 2;
-              truck.gy = truck.station === 'top' ? 2 : 8;
+              truck.waitTimer = 20 + Math.random() * 40;
             }
             break;
         }
@@ -865,20 +1163,22 @@
     }
 
     function updateCranes() {
-      // Top crane loading into first available carriage
+      // Top crane loading (during top station dock)
       if (gameState.train.state === 'DOCKED_AT_TOP' && gameState.topCrane.blocks > 0) {
         for (let i = 0; i < CONFIG.CARRIAGE_COUNT; i++) {
-          if (gameState.train.carriages[i].blocks < gameState.train.carriages[i].capacity && gameState.topCrane.blocks > 0) {
+          if (gameState.train.carriages[i].blocks < gameState.train.carriages[i].capacity &&
+              gameState.topCrane.blocks > 0) {
             gameState.train.carriages[i].blocks++;
             gameState.topCrane.blocks--;
           }
         }
       }
 
-      // Bottom crane unloading (LIFO - last carriage first)
+      // Bottom crane unloading (during bottom station dock) - LIFO
       if (gameState.train.state === 'DOCKED_AT_BOTTOM') {
         for (let i = CONFIG.CARRIAGE_COUNT - 1; i >= 0; i--) {
-          if (gameState.train.carriages[i].blocks > 0 && gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
+          if (gameState.train.carriages[i].blocks > 0 &&
+              gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
             gameState.train.carriages[i].blocks--;
             gameState.bottomCrane.blocks++;
           }
@@ -902,29 +1202,19 @@
         gameState.isReversed = true;
         gameState.stats.reversalCount++;
         gameState.topQuarry.forEach(b => b.height = 0);
-        gameState.bottomQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 3));
+        gameState.bottomQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 4));
       } else if (bottomTotal === 0 && topTotal > 200 && gameState.isReversed) {
         gameState.isReversed = false;
         gameState.stats.reversalCount++;
-        gameState.topQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 3));
+        gameState.topQuarry.forEach(b => b.height = 4 + Math.floor(Math.random() * 4));
         gameState.bottomQuarry.forEach(b => b.height = 0);
       }
     }
 
-    // ===== GAME LOOP =====
-    function update() {
-      gameState.frameCount++;
-      updateTrain();
-      updateTrucks();
-      updateCranes();
-      updateQuarryRates();
-      checkReversal();
-    }
+    // ==================== RENDERING ====================
 
     function render() {
-      ctx.fillStyle = COLOURS.canvas_bg;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+      drawBackground();
       drawTrack();
       drawQuarries();
       drawStations();
@@ -933,56 +1223,88 @@
       drawTrucks();
     }
 
+    // ==================== UI UPDATE ====================
+
     function updateUI() {
       gameState.uiUpdateCounter++;
-      if (gameState.uiUpdateCounter < 10) return;
+      if (gameState.uiUpdateCounter < 6) return;
       gameState.uiUpdateCounter = 0;
 
+      // Train status
       document.getElementById('trainStatus').textContent = gameState.train.state.replace(/_/g, ' ');
-      document.getElementById('trainPosition').textContent = `WP ${gameState.train.waypointIndex}/${TRACK_WAYPOINTS.length}`;
+      document.getElementById('trainPosition').textContent = `Waypoint ${gameState.train.waypointIndex}/${TRACK_WAYPOINTS.length}`;
 
       const totalCargo = getTotalTrainCargo();
       const maxCargo = CONFIG.CARRIAGE_COUNT * CONFIG.CARRIAGE_CAPACITY;
       document.getElementById('trainTotalCargo').textContent = `${totalCargo}/${maxCargo}`;
 
-      // Update carriage info
+      // Carriages
       let carriagesHTML = '';
       gameState.train.carriages.forEach((c, i) => {
-        carriagesHTML += `<div class="carriage-info">Car ${i + 1}: ${c.blocks}/${c.capacity}</div>`;
+        const isFull = c.blocks === c.capacity;
+        carriagesHTML += `<div class="carriage-info ${isFull ? 'full' : ''}">Car ${i + 1}: ${c.blocks}/${c.capacity}</div>`;
       });
       document.getElementById('carriagesList').innerHTML = carriagesHTML;
 
-      // Quarry info
-      const topCount = getTotalQuarryHeight(gameState.topQuarry);
-      const bottomCount = getTotalQuarryHeight(gameState.bottomQuarry);
-      const maxQuarryCapacity = CONFIG.QUARRY_GRID_WIDTH * CONFIG.QUARRY_GRID_HEIGHT * CONFIG.BLOCK_HEIGHT_LEVELS;
+      // Top station
+      document.getElementById('topCraneBlocks').textContent = `${gameState.topCrane.blocks}/${gameState.topCrane.maxStack}`;
+      document.getElementById('topCraneBar').style.width = (gameState.topCrane.blocks / gameState.topCrane.maxStack * 100) + '%';
+      const topTrucksActive = gameState.trucks.filter(t => t.station === 'top' && t.state !== 'IDLE_AT_STATION').length;
+      document.getElementById('topTrucksActive').textContent = `${topTrucksActive}/${CONFIG.TRUCK_COUNT_PER_STATION}`;
 
+      // Top quarry
+      const topCount = getTotalQuarryHeight(gameState.topQuarry);
+      const maxQuarryCapacity = CONFIG.QUARRY_GRID_WIDTH * CONFIG.QUARRY_GRID_HEIGHT * CONFIG.BLOCK_HEIGHT_LEVELS;
       document.getElementById('topQuarryBlocks').textContent = `${topCount}/${maxQuarryCapacity}`;
       document.getElementById('topQuarryBar').style.width = (topCount / maxQuarryCapacity * 100) + '%';
+
+      // Bottom station
+      document.getElementById('bottomCraneBlocks').textContent = `${gameState.bottomCrane.blocks}/${gameState.bottomCrane.maxStack}`;
+      document.getElementById('bottomCraneBar').style.width = (gameState.bottomCrane.blocks / gameState.bottomCrane.maxStack * 100) + '%';
+      const botTrucksActive = gameState.trucks.filter(t => t.station === 'bottom' && t.state !== 'IDLE_AT_STATION').length;
+      document.getElementById('bottomTrucksActive').textContent = `${botTrucksActive}/${CONFIG.TRUCK_COUNT_PER_STATION}`;
+
+      // Bottom quarry
+      const bottomCount = getTotalQuarryHeight(gameState.bottomQuarry);
       document.getElementById('bottomQuarryBlocks').textContent = `${bottomCount}/${maxQuarryCapacity}`;
       document.getElementById('bottomQuarryBar').style.width = (bottomCount / maxQuarryCapacity * 100) + '%';
 
-      // Crane info
-      document.getElementById('topCraneBlocks').textContent = `${gameState.topCrane.blocks}/${gameState.topCrane.maxStack}`;
-      document.getElementById('topCraneBar').style.width = (gameState.topCrane.blocks / gameState.topCrane.maxStack * 100) + '%';
-      document.getElementById('bottomCraneBlocks').textContent = `${gameState.bottomCrane.blocks}/${gameState.bottomCrane.maxStack}`;
-      document.getElementById('bottomCraneBar').style.width = (gameState.bottomCrane.blocks / gameState.bottomCrane.maxStack * 100) + '%';
-
       // Metrics
       document.getElementById('totalBlocksMoved').textContent = gameState.stats.blocksMoved;
-      const throughput = gameState.frameCount > 0 ? Math.round((gameState.stats.blocksMoved / (gameState.frameCount / 1800)) * 60) : 0;
+      const throughput = gameState.stats.frameCount > 0 ? Math.round((gameState.stats.blocksMoved / (gameState.stats.frameCount / 1800)) * 60) : 0;
       document.getElementById('throughputRate').textContent = throughput + '/min';
       document.getElementById('reversalCount').textContent = gameState.stats.reversalCount;
+
+      // FPS counter
+      const now = Date.now();
+      if (now - gameState.stats.lastFpsTime >= 1000) {
+        document.getElementById('fpsCounter').textContent = gameState.stats.fpsCounter;
+        gameState.stats.fpsCounter = 0;
+        gameState.stats.lastFpsTime = now;
+      }
     }
 
+    // ==================== MAIN GAME LOOP ====================
+
+    let lastFrameTime = Date.now();
+
     function gameLoop() {
-      update();
+      gameState.stats.frameCount++;
+      gameState.stats.fpsCounter++;
+
+      updateTrain();
+      updateTrucks();
+      updateCranes();
+      updateQuarryRates();
+      checkReversal();
       render();
       updateUI();
+
       requestAnimationFrame(gameLoop);
     }
 
-    // ===== INITIALIZATION & START =====
+    // ==================== INITIALIZATION & START ====================
+
     buildTruckPaths();
     initializeQuarries();
     initializeTrucks();
