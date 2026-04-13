@@ -17,18 +17,18 @@
       color: #e8e0d5;
       overflow: hidden;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+      height: 100vh;
     }
 
     #gameContainer {
+      flex: 1;
       position: relative;
       width: 1200px;
       height: 600px;
       background: #2d2a26;
       border: 2px solid #5a4a3a;
       display: flex;
+      flex-direction: column;
     }
 
     #canvas {
@@ -40,7 +40,7 @@
     }
 
     #sidebar {
-      width: 280px;
+      width: 300px;
       background: #0f0d0a;
       border-left: 3px solid #5a4a3a;
       padding: 12px;
@@ -48,6 +48,7 @@
       font-size: 10px;
       line-height: 1.5;
       color: #d8d0c5;
+      min-width: 300px;
     }
 
     #sidebar::-webkit-scrollbar {
@@ -160,93 +161,102 @@
 <body>
   <div id="gameContainer">
     <canvas id="canvas"></canvas>
-    <div id="sidebar">
-      <!-- Train Section -->
-      <div class="section">
-        <h3>🚂 Train Status</h3>
-        <div class="stat-row">
-          <span class="stat-label">State:</span>
-          <span class="stat-value" id="trainStatus">LOADING</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Position:</span>
-          <span class="stat-value" id="trainPosition">--</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Total Cargo:</span>
-          <span class="stat-value" id="trainTotalCargo">0/9</span>
-        </div>
-      </div>
+  </div>
 
-      <!-- Carriages Section -->
-      <div class="section">
-        <h3>📦 Carriages</h3>
-        <div id="carriagesList"></div>
+  <div id="sidebar">
+    <!-- Train Section -->
+    <div class="section">
+      <h3>🚂 Train Status</h3>
+      <div class="stat-row">
+        <span class="stat-label">State:</span>
+        <span class="stat-value" id="trainStatus">LOADING</span>
       </div>
-
-      <!-- Top Quarry Section -->
-      <div class="section">
-        <h3>⛏️ Top Quarry</h3>
-        <div class="stat-row">
-          <span class="stat-label">Blocks:</span>
-          <span class="stat-value" id="topQuarryBlocks">0/384</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="topQuarryBar" style="width: 100%;"></div>
-        </div>
+      <div class="stat-row">
+        <span class="stat-label">Position:</span>
+        <span class="stat-value" id="trainPosition">--</span>
       </div>
-
-      <!-- Top Crane Section -->
-      <div class="section">
-        <h3>🏗️ Top Crane</h3>
-        <div class="stat-row">
-          <span class="stat-label">Stacked:</span>
-          <span class="stat-value" id="topCraneBlocks">0/8</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="topCraneBar" style="width: 0%;"></div>
-        </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Cargo:</span>
+        <span class="stat-value" id="trainTotalCargo">0/9</span>
       </div>
+    </div>
 
-      <!-- Bottom Quarry Section -->
-      <div class="section">
-        <h3>⛏️ Bottom Quarry</h3>
-        <div class="stat-row">
-          <span class="stat-label">Blocks:</span>
-          <span class="stat-value" id="bottomQuarryBlocks">0/384</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="bottomQuarryBar" style="width: 0%;"></div>
-        </div>
+    <!-- Carriages Section -->
+    <div class="section">
+      <h3>📦 Carriages</h3>
+      <div id="carriagesList"></div>
+    </div>
+
+    <!-- Top Quarry Section -->
+    <div class="section">
+      <h3>⛏️ Top Quarry</h3>
+      <div class="stat-row">
+        <span class="stat-label">Blocks:</span>
+        <span class="stat-value" id="topQuarryBlocks">0/384</span>
       </div>
-
-      <!-- Bottom Crane Section -->
-      <div class="section">
-        <h3>🏗️ Bottom Crane</h3>
-        <div class="stat-row">
-          <span class="stat-label">Stacked:</span>
-          <span class="stat-value" id="bottomCraneBlocks">0/8</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="bottomCraneBar" style="width: 0%;"></div>
-        </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="topQuarryBar" style="width: 100%;"></div>
       </div>
+    </div>
 
-      <!-- System Metrics -->
-      <div class="section">
-        <h3>📊 Metrics</h3>
-        <div class="metrics-row">
-          <span class="metrics-label">Blocks Moved:</span>
-          <span class="metrics-value" id="totalBlocksMoved">0</span>
-        </div>
-        <div class="metrics-row">
-          <span class="metrics-label">Throughput:</span>
-          <span class="metrics-value" id="throughputRate">0/min</span>
-        </div>
-        <div class="metrics-row">
-          <span class="metrics-label">Reversals:</span>
-          <span class="metrics-value" id="reversalCount">0</span>
-        </div>
+    <!-- Top Crane Section -->
+    <div class="section">
+      <h3>🏗️ Top Crane</h3>
+      <div class="stat-row">
+        <span class="stat-label">Stacked:</span>
+        <span class="stat-value" id="topCraneBlocks">0/8</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">State:</span>
+        <span class="stat-value" id="topCraneState">IDLE</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="topCraneBar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Quarry Section -->
+    <div class="section">
+      <h3>⛏️ Bottom Quarry</h3>
+      <div class="stat-row">
+        <span class="stat-label">Blocks:</span>
+        <span class="stat-value" id="bottomQuarryBlocks">0/384</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="bottomQuarryBar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Crane Section -->
+    <div class="section">
+      <h3>🏗️ Bottom Crane</h3>
+      <div class="stat-row">
+        <span class="stat-label">Stacked:</span>
+        <span class="stat-value" id="bottomCraneBlocks">0/8</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">State:</span>
+        <span class="stat-value" id="bottomCraneState">IDLE</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="bottomCraneBar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- System Metrics -->
+    <div class="section">
+      <h3>📊 Metrics</h3>
+      <div class="metrics-row">
+        <span class="metrics-label">Blocks Moved:</span>
+        <span class="metrics-value" id="totalBlocksMoved">0</span>
+      </div>
+      <div class="metrics-row">
+        <span class="metrics-label">Throughput:</span>
+        <span class="metrics-value" id="throughputRate">0/min</span>
+      </div>
+      <div class="metrics-row">
+        <span class="metrics-label">Reversals:</span>
+        <span class="metrics-value" id="reversalCount">0</span>
       </div>
     </div>
   </div>
@@ -272,6 +282,11 @@
       TRUCK_COUNT_PER_STATION: 5,
       BLOCKS_PER_TRUCK: 1,
       BLOCK_HEIGHT_LEVELS: 8,
+      TRAIN_SPEED: 0.15,           // Slower train speed (waypoints per frame)
+      TRUCK_SPEED: 0.8,            // Truck movement speed (grid units per frame)
+      CRANE_TRANSFER_TIME: 20,     // Frames to load/unload one block
+      TRUCK_PICKUP_TIME: 25,       // Frames to pick up a block
+      TRUCK_DROPOFF_TIME: 20,      // Frames to drop off at crane
     };
 
     // ===== COLOR PALETTE =====
@@ -295,8 +310,9 @@
       craneArm: '#8a8a8a',
       trackWood: '#4a3a2a',
       trackSteel: '#3a3a3a',
-      roadDirt: '#7a6a52',
-      roadGravel: '#8a7a62',
+      roadDirt: '#5a4a3a',
+      roadGravel: '#6a5a45',
+      roadLine: '#4a3a2a',
       trainBody: '#3a4a5a',
       trainDoor: '#2a3a4a',
       trainWheel: '#2a2a2a',
@@ -317,9 +333,10 @@
       train: {
         state: 'DOCKED_AT_TOP',
         waypointIndex: 0,
+        waypointProgress: 0,        // 0 to 1, interpolation between waypoints
         speed: 0,
         haltCounter: 0,
-        haltDuration: 40,
+        haltDuration: 120,          // Longer halt for more visible docking
         carriages: [
           { blocks: 0, capacity: CONFIG.CARRIAGE_CAPACITY },
           { blocks: 0, capacity: CONFIG.CARRIAGE_CAPACITY },
@@ -328,8 +345,18 @@
         x: 0,
         y: 0,
       },
-      topCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK },
-      bottomCrane: { blocks: 0, maxStack: CONFIG.MAX_CRANE_STACK },
+      topCrane: {
+        blocks: 0,
+        maxStack: CONFIG.MAX_CRANE_STACK,
+        transferTimer: 0,
+        transferState: 'IDLE'        // 'LOADING' or 'IDLE'
+      },
+      bottomCrane: {
+        blocks: 0,
+        maxStack: CONFIG.MAX_CRANE_STACK,
+        transferTimer: 0,
+        transferState: 'IDLE'        // 'UNLOADING' or 'IDLE'
+      },
       trucks: [],
       stats: {
         blocksMoved: 0,
@@ -422,6 +449,8 @@
           blocks: 0,
           pathIndex: 0,
           waitTimer: Math.random() * 40,
+          currentPath: [],
+          pathProgress: 0,           // 0 to 1 for smooth movement between grid positions
         });
       }
 
@@ -435,6 +464,8 @@
           blocks: 0,
           pathIndex: 0,
           waitTimer: Math.random() * 40,
+          currentPath: [],
+          pathProgress: 0,
         });
       }
     }
@@ -536,6 +567,56 @@
     }
 
     // ===== RENDERING SYSTEM =====
+    function drawRoads() {
+      // Draw roads for truck paths
+      // Top road (station to quarry)
+      ctx.strokeStyle = COLOURS.roadDirt;
+      ctx.lineWidth = 20;
+      ctx.beginPath();
+
+      let first = true;
+      truckPaths.topStationToTopQuarry.forEach(wp => {
+        const { px, py } = gridToPixels(wp.gx, wp.gy);
+        if (first) {
+          ctx.moveTo(px + GRID.CELL_SIZE / 2, py + GRID.CELL_SIZE / 2);
+          first = false;
+        } else {
+          ctx.lineTo(px + GRID.CELL_SIZE / 2, py + GRID.CELL_SIZE / 2);
+        }
+      });
+      ctx.stroke();
+
+      // Draw road markings (center line)
+      ctx.strokeStyle = COLOURS.roadLine;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Bottom road (station to quarry)
+      ctx.strokeStyle = COLOURS.roadDirt;
+      ctx.lineWidth = 20;
+      ctx.beginPath();
+
+      first = true;
+      truckPaths.bottomStationToBottomQuarry.forEach(wp => {
+        const { px, py } = gridToPixels(wp.gx, wp.gy);
+        if (first) {
+          ctx.moveTo(px + GRID.CELL_SIZE / 2, py + GRID.CELL_SIZE / 2);
+          first = false;
+        } else {
+          ctx.lineTo(px + GRID.CELL_SIZE / 2, py + GRID.CELL_SIZE / 2);
+        }
+      });
+      ctx.stroke();
+
+      ctx.strokeStyle = COLOURS.roadLine;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     function drawQuarries() {
       const topQuarryGx = 8;
       const topQuarryGy = 1;
@@ -551,7 +632,19 @@
         const gy = topQuarryGy + (block.y / 4);
         const { px, py } = gridToPixels(gx, gy);
         const color = getBlockColor(block.height);
-        drawRect(px + localX * 10, py + localY * 10, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        // Draw stacked blocks with height
+        for (let h = 0; h < block.height; h++) {
+          const blockY = py + localY * 10 - (h * 2);
+          const shade = h % 2 === 0 ? color : adjustBrightness(color, -15);
+          drawRect(
+            px + localX * 10,
+            blockY,
+            CONFIG.BLOCK_SIZE - 1,
+            CONFIG.BLOCK_SIZE - 2,
+            shade
+          );
+        }
       });
       drawText('TOP QUARRY', topQuarryGx * GRID.CELL_SIZE, topQuarryGy * GRID.CELL_SIZE - 8, COLOURS.accent1, 10);
 
@@ -564,9 +657,29 @@
         const gy = bottomQuarryGy + (block.y / 4);
         const { px, py } = gridToPixels(gx, gy);
         const color = getBlockColor(block.height);
-        drawRect(px + localX * 10, py + localY * 10, CONFIG.BLOCK_SIZE - 1, CONFIG.BLOCK_SIZE - 1, color);
+
+        // Draw stacked blocks with height
+        for (let h = 0; h < block.height; h++) {
+          const blockY = py + localY * 10 - (h * 2);
+          const shade = h % 2 === 0 ? color : adjustBrightness(color, -15);
+          drawRect(
+            px + localX * 10,
+            blockY,
+            CONFIG.BLOCK_SIZE - 1,
+            CONFIG.BLOCK_SIZE - 2,
+            shade
+          );
+        }
       });
       drawText('BOTTOM QUARRY', bottomQuarryGx * GRID.CELL_SIZE, bottomQuarryGy * GRID.CELL_SIZE - 8, COLOURS.accent1, 10);
+    }
+
+    function adjustBrightness(color, amount) {
+      const num = parseInt(color.replace("#", ""), 16);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+      return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
     }
 
     function drawTrack() {
@@ -638,9 +751,13 @@
       drawRect(topCraneX - 12, topCraneY - 5, 24, 5, COLOURS.craneArm);
 
       for (let i = 0; i < gameState.topCrane.blocks; i++) {
-        drawRect(topCraneX - 10, topCraneY - 10 - i * 7, 20, 6, COLOURS.blockLevel4);
+        const blockColor = getBlockColor(i + 1);
+        drawRect(topCraneX - 10, topCraneY - 10 - i * 7, 20, 6, blockColor);
       }
-      drawText('Top Crane', topCraneX, topCraneY + 70, COLOURS.accent1, 8, 'center');
+
+      // State indicator
+      const topCraneStateColor = gameState.topCrane.transferState === 'LOADING' ? '#c4a574' : '#a8987f';
+      drawText(gameState.topCrane.transferState, topCraneX, topCraneY + 70, topCraneStateColor, 8, 'center');
 
       // Bottom crane at grid (5, 8)
       const bottomCraneX = 5 * GRID.CELL_SIZE + GRID.CELL_SIZE / 2;
@@ -650,15 +767,19 @@
       drawRect(bottomCraneX - 12, bottomCraneY + 55, 24, 5, COLOURS.craneArm);
 
       for (let i = 0; i < gameState.bottomCrane.blocks; i++) {
-        drawRect(bottomCraneX - 10, bottomCraneY + 10 + i * 7, 20, 6, COLOURS.blockLevel4);
+        const blockColor = getBlockColor(i + 1);
+        drawRect(bottomCraneX - 10, bottomCraneY + 10 + i * 7, 20, 6, blockColor);
       }
-      drawText('Bottom Crane', bottomCraneX, bottomCraneY - 10, COLOURS.accent1, 8, 'center');
+
+      // State indicator
+      const bottomCraneStateColor = gameState.bottomCrane.transferState === 'UNLOADING' ? '#c4a574' : '#a8987f';
+      drawText(gameState.bottomCrane.transferState, bottomCraneX, bottomCraneY - 10, bottomCraneStateColor, 8, 'center');
     }
 
     function drawTrain() {
       const waypoint = TRACK_WAYPOINTS[gameState.train.waypointIndex];
       const nextWaypoint = TRACK_WAYPOINTS[(gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length];
-      const pos = lerpGridPos(waypoint, nextWaypoint, 0.5);
+      const pos = lerpGridPos(waypoint, nextWaypoint, gameState.train.waypointProgress);
 
       const trainX = pos.px + GRID.CELL_SIZE / 2;
       const trainY = pos.py + GRID.CELL_SIZE / 2;
@@ -688,6 +809,14 @@
         drawCircle(carriageX - 12, carriageY + 8, 4, COLOURS.trainWheel);
         drawCircle(carriageX + 12, carriageY + 8, 4, COLOURS.trainWheel);
 
+        // Draw blocks in carriage
+        for (let b = 0; b < carriage.blocks; b++) {
+          const blockColor = getBlockColor(b + 1);
+          const blockY = carriageY - 8 + (b % 2) * 6;
+          const blockX = carriageX - 6 + (Math.floor(b / 2) * 8);
+          drawRect(blockX, blockY, 6, 5, blockColor);
+        }
+
         // Cargo count on carriage
         drawText(carriage.blocks, carriageX, carriageY - 18, COLOURS.accent2, 11, 'center');
       }
@@ -706,21 +835,27 @@
         drawCircle(px + 5, py + 5, 2.5, COLOURS.truckWheel);
 
         if (truck.blocks > 0) {
+          const blockColor = getBlockColor(truck.blocks);
+          drawRect(px - 6, py - 12, 12, 4, blockColor);
           drawText(truck.blocks, px, py - 10, COLOURS.blockLevel3, 8, 'center');
         }
+
+        // State label
+        const stateLabel = truck.state.split('_')[0];
+        drawText(stateLabel, px, py + 12, COLOURS.accent3, 7, 'center');
       });
     }
 
     // ===== GAME LOGIC =====
     function updateTrain() {
-      const SPEED = 0.5; // waypoints per frame (adjust for speed)
-      const HALT_DURATION = 40;
+      const HALT_DURATION = 120;  // Longer halt time
+      const SPEED = CONFIG.TRAIN_SPEED;
 
       switch (gameState.train.state) {
         case 'DOCKED_AT_TOP':
           if (gameState.train.haltCounter < HALT_DURATION) {
             gameState.train.haltCounter++;
-            gameState.train.speed = 0;
+            gameState.train.waypointProgress = 0;
           } else {
             gameState.train.state = 'DEPARTING_TOP';
             gameState.train.haltCounter = 0;
@@ -728,26 +863,32 @@
           break;
 
         case 'DEPARTING_TOP':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex > 5) {
-            gameState.train.state = 'EN_ROUTE';
+          gameState.train.waypointProgress += SPEED;
+          if (gameState.train.waypointProgress >= 1) {
+            gameState.train.waypointProgress = 0;
+            gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
+            if (gameState.train.waypointIndex > 5) {
+              gameState.train.state = 'EN_ROUTE';
+            }
           }
           break;
 
         case 'EN_ROUTE':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex === STATIONS.bottom.waypointIndex) {
-            gameState.train.state = 'DOCKED_AT_BOTTOM';
-            gameState.train.haltCounter = 0;
+          gameState.train.waypointProgress += SPEED;
+          if (gameState.train.waypointProgress >= 1) {
+            gameState.train.waypointProgress = 0;
+            gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
+            if (gameState.train.waypointIndex === STATIONS.bottom.waypointIndex) {
+              gameState.train.state = 'DOCKED_AT_BOTTOM';
+              gameState.train.haltCounter = 0;
+            }
           }
           break;
 
         case 'DOCKED_AT_BOTTOM':
           if (gameState.train.haltCounter < HALT_DURATION) {
             gameState.train.haltCounter++;
-            gameState.train.speed = 0;
+            gameState.train.waypointProgress = 0;
           } else {
             gameState.train.state = 'DEPARTING_BOTTOM';
             gameState.train.haltCounter = 0;
@@ -755,19 +896,25 @@
           break;
 
         case 'DEPARTING_BOTTOM':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex < STATIONS.bottom.waypointIndex) {
-            gameState.train.state = 'EN_ROUTE_BACK';
+          gameState.train.waypointProgress += SPEED;
+          if (gameState.train.waypointProgress >= 1) {
+            gameState.train.waypointProgress = 0;
+            gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
+            if (gameState.train.waypointIndex < STATIONS.bottom.waypointIndex) {
+              gameState.train.state = 'EN_ROUTE_BACK';
+            }
           }
           break;
 
         case 'EN_ROUTE_BACK':
-          gameState.train.speed = SPEED;
-          gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
-          if (gameState.train.waypointIndex === STATIONS.top.waypointIndex) {
-            gameState.train.state = 'DOCKED_AT_TOP';
-            gameState.train.haltCounter = 0;
+          gameState.train.waypointProgress += SPEED;
+          if (gameState.train.waypointProgress >= 1) {
+            gameState.train.waypointProgress = 0;
+            gameState.train.waypointIndex = (gameState.train.waypointIndex + 1) % TRACK_WAYPOINTS.length;
+            if (gameState.train.waypointIndex === STATIONS.top.waypointIndex) {
+              gameState.train.state = 'DOCKED_AT_TOP';
+              gameState.train.haltCounter = 0;
+            }
           }
           break;
       }
@@ -788,6 +935,9 @@
               if (hasBlocks && craneNotFull) {
                 truck.state = 'EN_ROUTE_TO_QUARRY';
                 truck.pathIndex = 0;
+                truck.currentPath = truck.station === 'top' ?
+                  truckPaths.topStationToTopQuarry :
+                  truckPaths.bottomStationToBottomQuarry;
               } else {
                 truck.waitTimer = 30 + Math.random() * 40;
               }
@@ -795,18 +945,24 @@
             break;
 
           case 'EN_ROUTE_TO_QUARRY':
-            const path = truck.station === 'top' ?
-              truckPaths.topStationToTopQuarry :
-              truckPaths.bottomStationToBottomQuarry;
+            if (truck.pathIndex < truck.currentPath.length - 1) {
+              const current = truck.currentPath[truck.pathIndex];
+              const next = truck.currentPath[truck.pathIndex + 1];
+              truck.pathProgress += CONFIG.TRUCK_SPEED;
 
-            if (truck.pathIndex < path.length) {
-              const wp = path[truck.pathIndex];
-              truck.gx = wp.gx;
-              truck.gy = wp.gy;
-              truck.pathIndex++;
+              if (truck.pathProgress >= 1) {
+                truck.pathProgress = 0;
+                truck.pathIndex++;
+                const wp = truck.currentPath[truck.pathIndex];
+                truck.gx = wp.gx;
+                truck.gy = wp.gy;
+              } else {
+                truck.gx = current.gx + (next.gx - current.gx) * truck.pathProgress;
+                truck.gy = current.gy + (next.gy - current.gy) * truck.pathProgress;
+              }
             } else {
               truck.state = 'PICKING_UP_BLOCK';
-              truck.waitTimer = 25;
+              truck.waitTimer = CONFIG.TRUCK_PICKUP_TIME;
             }
             break;
 
@@ -821,6 +977,10 @@
                 truck.blocks = CONFIG.BLOCKS_PER_TRUCK;
                 truck.state = 'EN_ROUTE_TO_STATION';
                 truck.pathIndex = 0;
+                truck.pathProgress = 0;
+                truck.currentPath = truck.station === 'top' ?
+                  truckPaths.topQuarryToTopStation :
+                  truckPaths.bottomQuarryToBottomStation;
                 gameState.stats.blocksMoved++;
               } else {
                 truck.state = 'IDLE_AT_STATION';
@@ -830,18 +990,24 @@
             break;
 
           case 'EN_ROUTE_TO_STATION':
-            const returnPath = truck.station === 'top' ?
-              truckPaths.topQuarryToTopStation :
-              truckPaths.bottomQuarryToBottomStation;
+            if (truck.pathIndex < truck.currentPath.length - 1) {
+              const current = truck.currentPath[truck.pathIndex];
+              const next = truck.currentPath[truck.pathIndex + 1];
+              truck.pathProgress += CONFIG.TRUCK_SPEED;
 
-            if (truck.pathIndex < returnPath.length) {
-              const wp = returnPath[truck.pathIndex];
-              truck.gx = wp.gx;
-              truck.gy = wp.gy;
-              truck.pathIndex++;
+              if (truck.pathProgress >= 1) {
+                truck.pathProgress = 0;
+                truck.pathIndex++;
+                const wp = truck.currentPath[truck.pathIndex];
+                truck.gx = wp.gx;
+                truck.gy = wp.gy;
+              } else {
+                truck.gx = current.gx + (next.gx - current.gx) * truck.pathProgress;
+                truck.gy = current.gy + (next.gy - current.gy) * truck.pathProgress;
+              }
             } else {
               truck.state = 'DEPOSITING_AT_CRANE';
-              truck.waitTimer = 20;
+              truck.waitTimer = CONFIG.TRUCK_DROPOFF_TIME;
             }
             break;
 
@@ -858,6 +1024,7 @@
               truck.waitTimer = 15 + Math.random() * 30;
               truck.gx = truck.station === 'top' ? 4 + Math.random() * 2 : 4 + Math.random() * 2;
               truck.gy = truck.station === 'top' ? 2 : 8;
+              truck.pathProgress = 0;
             }
             break;
         }
@@ -867,22 +1034,42 @@
     function updateCranes() {
       // Top crane loading into first available carriage
       if (gameState.train.state === 'DOCKED_AT_TOP' && gameState.topCrane.blocks > 0) {
-        for (let i = 0; i < CONFIG.CARRIAGE_COUNT; i++) {
-          if (gameState.train.carriages[i].blocks < gameState.train.carriages[i].capacity && gameState.topCrane.blocks > 0) {
-            gameState.train.carriages[i].blocks++;
-            gameState.topCrane.blocks--;
+        gameState.topCrane.transferTimer++;
+        if (gameState.topCrane.transferTimer >= CONFIG.CRANE_TRANSFER_TIME) {
+          gameState.topCrane.transferState = 'LOADING';
+          gameState.topCrane.transferTimer = 0;
+
+          for (let i = 0; i < CONFIG.CARRIAGE_COUNT; i++) {
+            if (gameState.train.carriages[i].blocks < gameState.train.carriages[i].capacity && gameState.topCrane.blocks > 0) {
+              gameState.train.carriages[i].blocks++;
+              gameState.topCrane.blocks--;
+              break;
+            }
           }
         }
+      } else {
+        gameState.topCrane.transferState = 'IDLE';
+        gameState.topCrane.transferTimer = 0;
       }
 
       // Bottom crane unloading (LIFO - last carriage first)
       if (gameState.train.state === 'DOCKED_AT_BOTTOM') {
-        for (let i = CONFIG.CARRIAGE_COUNT - 1; i >= 0; i--) {
-          if (gameState.train.carriages[i].blocks > 0 && gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
-            gameState.train.carriages[i].blocks--;
-            gameState.bottomCrane.blocks++;
+        gameState.bottomCrane.transferTimer++;
+        if (gameState.bottomCrane.transferTimer >= CONFIG.CRANE_TRANSFER_TIME) {
+          gameState.bottomCrane.transferState = 'UNLOADING';
+          gameState.bottomCrane.transferTimer = 0;
+
+          for (let i = CONFIG.CARRIAGE_COUNT - 1; i >= 0; i--) {
+            if (gameState.train.carriages[i].blocks > 0 && gameState.bottomCrane.blocks < gameState.bottomCrane.maxStack) {
+              gameState.train.carriages[i].blocks--;
+              gameState.bottomCrane.blocks++;
+              break;
+            }
           }
         }
+      } else {
+        gameState.bottomCrane.transferState = 'IDLE';
+        gameState.bottomCrane.transferTimer = 0;
       }
     }
 
@@ -925,6 +1112,7 @@
       ctx.fillStyle = COLOURS.canvas_bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      drawRoads();
       drawTrack();
       drawQuarries();
       drawStations();
@@ -965,8 +1153,11 @@
       // Crane info
       document.getElementById('topCraneBlocks').textContent = `${gameState.topCrane.blocks}/${gameState.topCrane.maxStack}`;
       document.getElementById('topCraneBar').style.width = (gameState.topCrane.blocks / gameState.topCrane.maxStack * 100) + '%';
+      document.getElementById('topCraneState').textContent = gameState.topCrane.transferState;
+
       document.getElementById('bottomCraneBlocks').textContent = `${gameState.bottomCrane.blocks}/${gameState.bottomCrane.maxStack}`;
       document.getElementById('bottomCraneBar').style.width = (gameState.bottomCrane.blocks / gameState.bottomCrane.maxStack * 100) + '%';
+      document.getElementById('bottomCraneState').textContent = gameState.bottomCrane.transferState;
 
       // Metrics
       document.getElementById('totalBlocksMoved').textContent = gameState.stats.blocksMoved;
