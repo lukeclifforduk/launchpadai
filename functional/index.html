@@ -497,7 +497,10 @@
 
       spriteIds.forEach(id => {
         const symbol = document.getElementById(id);
-        if (!symbol) return;
+        if (!symbol) {
+          console.warn(`Sprite symbol not found: ${id}`);
+          return;
+        }
 
         // Create an off-screen canvas for rendering sprite
         const spriteCanvas = document.createElement('canvas');
@@ -505,7 +508,7 @@
         spriteCanvas.height = 32;
         const spriteCtx = spriteCanvas.getContext('2d');
 
-        // Create a temporary SVG element that wraps the symbol
+        // Create a temporary SVG element that wraps the symbol content
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 32 32');
         svg.setAttribute('width', '32');
@@ -513,15 +516,15 @@
         svg.setAttribute('shape-rendering', 'crispEdges');
         svg.setAttribute('image-rendering', 'pixelated');
 
-        // Clone the symbol content
-        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${id}`);
-        svg.appendChild(use);
+        // Clone the symbol's children (rect, circle, path elements, etc.)
+        for (let child of symbol.children) {
+          svg.appendChild(child.cloneNode(true));
+        }
 
         // Convert SVG to image and render to canvas
         const serializer = new XMLSerializer();
         const svgString = serializer.serializeToString(svg);
-        const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(svgBlob);
 
         const img = new Image();
