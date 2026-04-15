@@ -1161,18 +1161,37 @@
       // Get truck color (cabin color)
       const truckColor = TRUCK_COLORS[truck.colorIdx % TRUCK_COLORS.length];
 
+      // Add state-based glow/outline
+      if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
+        // Bright glow when loading/unloading
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -5, 20, 12);
+      } else if (truck.phase === 'AT_PULLOVER') {
+        // Warning glow when waiting
+        ctx.strokeStyle = '#ff6600';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -5, 20, 12);
+      }
+
       // Cabin - vibrant color
       ctx.fillStyle = truckColor;
       ctx.fillRect(-8, -4, 6, 8);
 
-      // Body - dark gray to contrast with cabin
-      ctx.fillStyle = '#444444';
+      // Body - darker shade based on load state
+      if (truck.ore > 0) {
+        ctx.fillStyle = '#666666';  // Lighter gray when loaded
+      } else {
+        ctx.fillStyle = '#333333';  // Darker gray when empty
+      }
       ctx.fillRect(-2, -5, 12, 10);
 
       // Ore in body - bright orange/yellow
-      ctx.fillStyle = '#ffaa00';
-      const oreHeight = (truck.ore / 2.0) * 4;
-      ctx.fillRect(0, -3 - oreHeight, 8, oreHeight);
+      if (truck.ore > 0) {
+        ctx.fillStyle = '#ffaa00';
+        const oreHeight = (truck.ore / 2.0) * 4;
+        ctx.fillRect(0, -3 - oreHeight, 8, oreHeight);
+      }
 
       // Wheels - black
       ctx.fillStyle = '#000000';
@@ -1196,20 +1215,22 @@
     }
 
     function drawLabels() {
-      // Time
+      // Time display
       const minutes = Math.floor(state.stats.totalTime / 60);
       const seconds = Math.floor(state.stats.totalTime % 60);
       const timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
-      ctx.fillStyle = '#d4c8a8';
-      ctx.font = 'bold 12px Courier New';
-      ctx.textAlign = 'right';
-      ctx.fillText(timeStr, CANVAS_W - 10, 20);
-
-      // Flow arrow
+      // Time in bright cyan
+      ctx.fillStyle = '#00d9ff';
       ctx.font = 'bold 14px Courier New';
+      ctx.textAlign = 'right';
+      ctx.fillText(timeStr, CANVAS_W - 10, 25);
+
+      // Flow direction indicator - bright green/red based on direction
+      ctx.fillStyle = state.isReversed ? '#ff1744' : '#00dd44';
+      ctx.font = 'bold 16px Courier New';
       ctx.textAlign = 'left';
-      ctx.fillText(state.isReversed ? '◄ B→A' : 'A→B ►', 10, 20);
+      ctx.fillText(state.isReversed ? '◄ B→A' : 'A→B ►', 10, 25);
     }
 
     function render() {
