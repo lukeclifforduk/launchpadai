@@ -505,15 +505,33 @@
         spriteCanvas.height = 32;
         const spriteCtx = spriteCanvas.getContext('2d');
 
-        // Create SVG image and render to canvas
-        const svg = new XMLSerializer().serializeToString(symbol);
-        const svgBlob = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" shape-rendering="crispEdges" image-rendering="pixelated">${svg.substring(svg.indexOf('>') + 1, svg.lastIndexOf('<'))}</svg>`], { type: 'image/svg+xml' });
+        // Create a temporary SVG element that wraps the symbol
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 32 32');
+        svg.setAttribute('width', '32');
+        svg.setAttribute('height', '32');
+        svg.setAttribute('shape-rendering', 'crispEdges');
+        svg.setAttribute('image-rendering', 'pixelated');
+
+        // Clone the symbol content
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${id}`);
+        svg.appendChild(use);
+
+        // Convert SVG to image and render to canvas
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(svgBlob);
 
         const img = new Image();
         img.onload = () => {
-          spriteCtx.drawImage(img, 0, 0);
+          spriteCtx.drawImage(img, 0, 0, 32, 32);
           SPRITES[id] = spriteCanvas;
+          URL.revokeObjectURL(url);
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load sprite: ${id}`);
           URL.revokeObjectURL(url);
         };
         img.src = url;
