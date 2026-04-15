@@ -468,9 +468,12 @@
       craneB: { ore: 0.0 },
       quarryA: new Float32Array(80),
       quarryB: new Float32Array(80),
+      quarryAFlash: 0,  // Flash timer for quarry A
+      quarryBFlash: 0,  // Flash timer for quarry B
+      lastQuarryATotal: 0,  // Track previous fill state
+      lastQuarryBTotal: 0,  // Track previous fill state
       trucks: [],
       isReversed: false,
-      dayTime: 0.5,
       stats: {
         oreMoved: 0.0,
         cycleCount: 0,
@@ -799,6 +802,39 @@
       }
     }
 
+    /* ===== QUARRY FILL STATE TRACKING ===== */
+    function updateQuarryFlash(dt) {
+      const totA = quarryTotal(state.quarryA);
+      const totB = quarryTotal(state.quarryB);
+
+      // Check if A's fill state changed (empty/full thresholds)
+      const aWasEmpty = state.lastQuarryATotal <= EMPTY_THRESHOLD;
+      const aIsEmpty = totA <= EMPTY_THRESHOLD;
+      const aWasFull = state.lastQuarryATotal >= FULL_THRESHOLD;
+      const aIsFull = totA >= FULL_THRESHOLD;
+
+      if ((aWasEmpty && !aIsEmpty) || (aWasFull && !aIsFull) || (aIsEmpty && !aWasEmpty) || (aIsFull && !aWasFull)) {
+        state.quarryAFlash = 0.3;  // 300ms flash
+      }
+
+      // Check if B's fill state changed
+      const bWasEmpty = state.lastQuarryBTotal <= EMPTY_THRESHOLD;
+      const bIsEmpty = totB <= EMPTY_THRESHOLD;
+      const bWasFull = state.lastQuarryBTotal >= FULL_THRESHOLD;
+      const bIsFull = totB >= FULL_THRESHOLD;
+
+      if ((bWasEmpty && !bIsEmpty) || (bWasFull && !bIsFull) || (bIsEmpty && !bWasEmpty) || (bIsFull && !bWasFull)) {
+        state.quarryBFlash = 0.3;  // 300ms flash
+      }
+
+      state.lastQuarryATotal = totA;
+      state.lastQuarryBTotal = totB;
+
+      // Decay flash timers
+      state.quarryAFlash = Math.max(0, state.quarryAFlash - dt);
+      state.quarryBFlash = Math.max(0, state.quarryBFlash - dt);
+    }
+
     /* ===== RENDERING ===== */
 
     // Deterministic PRNG for terrain
@@ -846,7 +882,7 @@
     }
 
     function drawQuarries() {
-      const drawQuarry = (q, quarryDef) => {
+      const drawQuarry = (q, quarryDef, flashTimer) => {
         const { x, y, cols, rows, cellSize } = quarryDef;
         ctx.fillStyle = '#2a1a0a';
         ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
@@ -871,10 +907,17 @@
             ctx.strokeRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
           }
         }
+
+        // Flash effect when fill state changes
+        if (flashTimer > 0) {
+          const flashAlpha = Math.min(1, flashTimer / 0.3 * 0.3);
+          ctx.fillStyle = `rgba(255, 255, 150, ${flashAlpha * 0.5})`;
+          ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
+        }
       };
 
-      drawQuarry(state.quarryA, QUARRY_A);
-      drawQuarry(state.quarryB, QUARRY_B);
+      drawQuarry(state.quarryA, QUARRY_A, state.quarryAFlash);
+      drawQuarry(state.quarryB, QUARRY_B, state.quarryBFlash);
     }
 
     function drawStations() {
@@ -1238,6 +1281,7 @@
       updateCranes(dt);
       updateTrucks(dt);
       checkReversal();
+      updateQuarryFlash(dt);
 
       render();
 
