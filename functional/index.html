@@ -993,6 +993,12 @@
         // Platform - rust red
         ctx.fillStyle = '#c9584c';
         ctx.fillRect(x - 25, y + 10, 50, 6);
+
+        // Station label
+        ctx.fillStyle = '#3d2817';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`STATION ${loc}`, x, y + 30);
       };
 
       drawStation('A', STATION_A.x, STATION_A.y);
