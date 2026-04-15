@@ -246,82 +246,150 @@
   </div>
 
   <script>
+    /**
+     * ========== INDUSTRIAL MINE SIMULATION ==========
+     *
+     * A sophisticated logistics game simulating ore mining and transport.
+     *
+     * CORE SYSTEMS:
+     * 1. BEHAVIOR TREES: AI for trucks and trains using Selector/Sequence patterns
+     * 2. SPATIAL GRID: O(1) proximity queries for ore extraction within radius
+     * 3. STATE MACHINE: Cranes manage IDLE→RECEIVING→STAGING→READY→TRANSFERRING states
+     * 4. MULTI-ORE: Iron/Coal/Gold with different extraction rates and values
+     * 5. SUPPLY CHAIN: Quarry → Truck → Crane → Train → Destination
+     * 6. PROGRESSION: Milestones unlock bonuses as ore is extracted
+     * 7. METRICS: Real-time efficiency tracking with color-coded feedback
+     *
+     * GAME LOOP:
+     * - Update: spatial grid, train, cranes, trucks, metrics
+     * - Physics: movement along roads, state transitions
+     * - Render: canvas drawing and UI sidebar
+     * - UI: update metrics and status indicators
+     *
+     * KEY MECHANICS:
+     * - Trucks extract ore from within 10-cell radius (proximity)
+     * - Cranes batch ore and signal train readiness
+     * - Train auto-dispatches when cargo >= target OR dwell time expires
+     * - Pullover zones prevent traffic gridlock
+     * - Economic metrics show supply chain efficiency
+     *
+     * REFERENCE:
+     * - Behavior trees: http://developers-heaven.net/blog/game-ai-behavior-trees
+     * - Transport Tycoon: classic logistics game inspiration
+     * - Factorio: supply chain mechanics inspiration
+     */
+
     /* ===== CANVAS SETUP ===== */
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 1200;
     canvas.height = 700;
 
-    /* ===== CONSTANTS ===== */
-    const CANVAS_W = 1200, CANVAS_H = 700;
-    const CELL = 20; // terrain tile size (quarry cell)
+    /* ===== CONFIGURATION ===== */
+    const CONFIG = {
+      CANVAS: { width: 1200, height: 700 },
+      CELL_SIZE: 20,
 
-    // Oval track (rounded rectangle) - Middle 60% of canvas
-    // Top 20%: 0-140px (Quarry A: 8 rows × 20px = 160px, but capped at 140)
-    // Middle 60%: 140-560px (Train tracks with stations)
-    // Bottom 20%: 560-700px (Quarry B: 8 rows × 20px = 160px, but capped at 140)
-    const TK = {
-      LEFT: 250,
-      RIGHT: 950,
-      TOP: 160,      // Just below Quarry A
-      BOTTOM: 540,   // Just above Quarry B
-      RADIUS: 80
+      // Track geometry
+      TRACK: {
+        LEFT: 250,
+        RIGHT: 950,
+        TOP: 160,
+        BOTTOM: 540,
+        RADIUS: 80,
+        CRUISE_SPEED: 40.0,
+        ACCEL_DIST: 120
+      },
+
+      // Station positions
+      STATIONS: {
+        A: { x: 600, y: 160 },
+        B: { x: 600, y: 540 }
+      },
+
+      // Quarry dimensions (60×8 cells = 480 cells, ~3840 ore total)
+      QUARRIES: {
+        A: { x: 0, y: 0, cols: 60, rows: 8, cellSize: 20 },
+        B: { x: 0, y: 560, cols: 60, rows: 8, cellSize: 20 },
+        MAX_ORE: 3840,
+        EMPTY_THRESHOLD: 192,  // ~5%
+        FULL_THRESHOLD: 3648   // ~95%
+      },
+
+      // Crane positions
+      CRANES: {
+        A: { x: 600, baseY: 140 },
+        B: { x: 600, baseY: 560 }
+      },
+
+      // Train mechanics
+      TRAIN: {
+        CARRIAGE_COUNT: 2,
+        CARRIAGE_CAPACITY: 4,
+        CARRIAGE_SPACING: 32,
+        DWELL_TIME: 5.0,
+        TARGET_LOAD_CAPACITY: 6,
+        MIN_LOADED_TO_DEPART: 1,
+        URGENT_LOAD_CAPACITY: 4
+      },
+
+      // Truck mechanics
+      TRUCKS: {
+        SPEED: 28,
+        PER_STATION: 4,
+        EXTRACTION_RATE: 2.0
+      },
+
+      // Ore types
+      ORE_TYPES: {
+        IRON: { color: '#8b6f47', extractRate: 0.8, value: 1.0, label: 'Iron' },
+        COAL: { color: '#3a3a3a', extractRate: 0.6, value: 2.0, label: 'Coal' },
+        GOLD: { color: '#d4a835', extractRate: 0.4, value: 5.0, label: 'Gold' }
+      },
+
+      // Pullover zones for truck distribution
+      PULLOVER_ZONES: {
+        A: [
+          { dist: 80, capacity: 2, label: '1' },
+          { dist: 180, capacity: 2, label: '2' },
+          { dist: 280, capacity: 2, label: '3' }
+        ],
+        B: [
+          { dist: 80, capacity: 2, label: '1' },
+          { dist: 180, capacity: 2, label: '2' },
+          { dist: 280, capacity: 2, label: '3' }
+        ]
+      }
     };
 
-    const CRUISE_SPEED = 40.0;  // px/sec (reduced from 52.95 for slower, more visible movement)
-    const ACCEL_DIST = 120;     // px for accel/decel ramp
-
-    // Station locations (pixel coords on track) - Top and bottom middle
-    const STATION_A = { x: 600, y: 160 };   // top of track, on the loop
-    const STATION_B = { x: 600, y: 540 };   // bottom of track, on the loop
-
-    // Quarries (pixel coords + grid size) - Expanded to 60×8 cells (20px per cell)
-    // Top 20%: 0-140px height, 0-1200px width
-    // Bottom 20%: 560-700px height, 0-1200px width
-    const QUARRY_A = { x: 0, y: 0, cols: 60, rows: 8, cellSize: 20 };    // Top, full width
-    const QUARRY_B = { x: 0, y: 560, cols: 60, rows: 8, cellSize: 20 };  // Bottom, full width
-
-    // Cranes - positioned at stations
-    const CRANE_A = { x: 600, baseY: 140 };  // Just above Quarry A
-    const CRANE_B = { x: 600, baseY: 560 };  // Just below train tracks, above Quarry B
-
-    const CARRIAGE_COUNT = 2;         // Reduced for frequent dispatches
-    const CARRIAGE_CAPACITY = 4;      // Reduced for more game activity
-    const CARRIAGE_SPACING = 32;      // px center-to-center
-
-    // Train dispatch logic
-    const DWELL_TIME = 5.0;           // Max time train waits at station
-    const TARGET_LOAD_CAPACITY = 6;   // Depart when this full (3/4 of 8 max)
-    const MIN_LOADED_TO_DEPART = 1;   // Won't leave completely empty
-    const URGENT_LOAD_CAPACITY = 4;   // Depart sooner if crane is ready
-    const TRUCK_SPEED = 28;        // px/sec (slower for better pacing)
-    const TRUCKS_PER_STATION = 4;  // increased from 3 for more activity
-    const DAY_CYCLE_SECS = 120.0;
-
-    const MAX_QUARRY_ORE = 3840;   // 60×8×8 (expanded from 37×8×8 = 2368)
-    const EMPTY_THRESHOLD = 192;   // ~5%
-    const FULL_THRESHOLD = 3648;   // ~95%
-
-    // Ore types with extraction speed and value
-    const ORE_TYPES = {
-      IRON: { color: '#8b6f47', extractRate: 0.8, value: 1.0, label: 'Iron' },
-      COAL: { color: '#3a3a3a', extractRate: 0.6, value: 2.0, label: 'Coal' },
-      GOLD: { color: '#d4a835', extractRate: 0.4, value: 5.0, label: 'Gold' }
-    };
-
-    // Pullover zones - trucks distribute across these zones while at quarry
-    // Each zone has a distance along the road and max truck capacity
-    const PULLOVER_A_ZONES = [
-      { dist: 80, capacity: 2, label: '1' },    // Zone 1: near quarry entrance
-      { dist: 180, capacity: 2, label: '2' },   // Zone 2: mid-quarry
-      { dist: 280, capacity: 2, label: '3' }    // Zone 3: deep in quarry
-    ];
-
-    const PULLOVER_B_ZONES = [
-      { dist: 80, capacity: 2, label: '1' },
-      { dist: 180, capacity: 2, label: '2' },
-      { dist: 280, capacity: 2, label: '3' }
-    ];
+    // Legacy constant references for backward compatibility
+    const CANVAS_W = CONFIG.CANVAS.width;
+    const CANVAS_H = CONFIG.CANVAS.height;
+    const CELL = CONFIG.CELL_SIZE;
+    const TK = CONFIG.TRACK;
+    const CRUISE_SPEED = CONFIG.TRACK.CRUISE_SPEED;
+    const ACCEL_DIST = CONFIG.TRACK.ACCEL_DIST;
+    const STATION_A = CONFIG.STATIONS.A;
+    const STATION_B = CONFIG.STATIONS.B;
+    const QUARRY_A = CONFIG.QUARRIES.A;
+    const QUARRY_B = CONFIG.QUARRIES.B;
+    const CRANE_A = CONFIG.CRANES.A;
+    const CRANE_B = CONFIG.CRANES.B;
+    const CARRIAGE_COUNT = CONFIG.TRAIN.CARRIAGE_COUNT;
+    const CARRIAGE_CAPACITY = CONFIG.TRAIN.CARRIAGE_CAPACITY;
+    const CARRIAGE_SPACING = CONFIG.TRAIN.CARRIAGE_SPACING;
+    const DWELL_TIME = CONFIG.TRAIN.DWELL_TIME;
+    const TARGET_LOAD_CAPACITY = CONFIG.TRAIN.TARGET_LOAD_CAPACITY;
+    const MIN_LOADED_TO_DEPART = CONFIG.TRAIN.MIN_LOADED_TO_DEPART;
+    const URGENT_LOAD_CAPACITY = CONFIG.TRAIN.URGENT_LOAD_CAPACITY;
+    const TRUCK_SPEED = CONFIG.TRUCKS.SPEED;
+    const TRUCKS_PER_STATION = CONFIG.TRUCKS.PER_STATION;
+    const MAX_QUARRY_ORE = CONFIG.QUARRIES.MAX_ORE;
+    const EMPTY_THRESHOLD = CONFIG.QUARRIES.EMPTY_THRESHOLD;
+    const FULL_THRESHOLD = CONFIG.QUARRIES.FULL_THRESHOLD;
+    const ORE_TYPES = CONFIG.ORE_TYPES;
+    const PULLOVER_A_ZONES = CONFIG.PULLOVER_ZONES.A;
+    const PULLOVER_B_ZONES = CONFIG.PULLOVER_ZONES.B;
 
     // Road waypoints - Carved naturally through quarries
     // Quarry A spans y: 0-140px, x: 0-1200px (full width)
