@@ -242,77 +242,88 @@
 
     /* ===== CONSTANTS ===== */
     const CANVAS_W = 1200, CANVAS_H = 700;
-    const CELL = 16; // terrain tile size
+    const CELL = 20; // terrain tile size (quarry cell)
 
-    // Oval track (rounded rectangle) - Middle 3/5 of canvas
-    // Top 1/5: 0-140px (Quarry A)
-    // Middle 3/5: 140-560px (Train tracks)
-    // Bottom 1/5: 560-700px (Quarry B)
+    // Oval track (rounded rectangle) - Middle 60% of canvas
+    // Top 20%: 0-140px (Quarry A: 8 rows × 20px = 160px, but capped at 140)
+    // Middle 60%: 140-560px (Train tracks with stations)
+    // Bottom 20%: 560-700px (Quarry B: 8 rows × 20px = 160px, but capped at 140)
     const TK = {
-      LEFT: 150,
-      RIGHT: 1050,
-      TOP: 200,      // Moved down from 100
-      BOTTOM: 500,   // Moved up from 600
-      RADIUS: 100
+      LEFT: 250,
+      RIGHT: 950,
+      TOP: 160,      // Just below Quarry A
+      BOTTOM: 540,   // Just above Quarry B
+      RADIUS: 80
     };
 
-    const CRUISE_SPEED = 52.95;  // px/sec
-    const ACCEL_DIST = 150;      // px for accel/decel ramp
+    const CRUISE_SPEED = 40.0;  // px/sec (reduced from 52.95 for slower, more visible movement)
+    const ACCEL_DIST = 120;     // px for accel/decel ramp
 
     // Station locations (pixel coords on track) - Top and bottom middle
-    const STATION_A = { x: 600, y: 155 };   // top-middle, above quarry A
-    const STATION_B = { x: 600, y: 545 };   // bottom-middle, below quarry B
+    const STATION_A = { x: 600, y: 160 };   // top of track, on the loop
+    const STATION_B = { x: 600, y: 540 };   // bottom of track, on the loop
 
-    // Quarries (pixel coords + grid size) - Much larger, occupy most of top/bottom regions
-    // Top 1/5: 0-140px height, spanning most of width
-    // Bottom 1/5: 560-700px height, spanning most of width
-    const QUARRY_A = { x: 20, y: 10, cols: 37, rows: 8, cellSize: 16 };   // Top 1/5, much wider grid
-    const QUARRY_B = { x: 20, y: 570, cols: 37, rows: 8, cellSize: 16 };  // Bottom 1/5, much wider grid
+    // Quarries (pixel coords + grid size) - Expanded to 60×8 cells (20px per cell)
+    // Top 20%: 0-140px height, 0-1200px width
+    // Bottom 20%: 560-700px height, 0-1200px width
+    const QUARRY_A = { x: 0, y: 0, cols: 60, rows: 8, cellSize: 20 };    // Top, full width
+    const QUARRY_B = { x: 0, y: 560, cols: 60, rows: 8, cellSize: 20 };  // Bottom, full width
 
-    // Cranes - positioned above/below quarries
+    // Cranes - positioned at stations
     const CRANE_A = { x: 600, baseY: 140 };  // Just above Quarry A
-    const CRANE_B = { x: 600, baseY: 560 };  // Just below Quarry B
+    const CRANE_B = { x: 600, baseY: 560 };  // Just below train tracks, above Quarry B
 
     const CARRIAGE_COUNT = 5;
     const CARRIAGE_CAPACITY = 8;
     const CARRIAGE_SPACING = 32;  // px center-to-center
 
     const DWELL_TIME = 9.0;        // seconds
-    const TRUCK_SPEED = 33;        // px/sec (50% faster than original 22)
-    const TRUCKS_PER_STATION = 3;
+    const TRUCK_SPEED = 28;        // px/sec (slower for better pacing)
+    const TRUCKS_PER_STATION = 4;  // increased from 3 for more activity
     const DAY_CYCLE_SECS = 120.0;
 
-    const MAX_QUARRY_ORE = 2368;   // 37×8×8
-    const EMPTY_THRESHOLD = 118;   // ~5%
-    const FULL_THRESHOLD = 2250;   // ~95%
+    const MAX_QUARRY_ORE = 3840;   // 60×8×8 (expanded from 37×8×8 = 2368)
+    const EMPTY_THRESHOLD = 192;   // ~5%
+    const FULL_THRESHOLD = 3648;   // ~95%
 
-    // Road waypoints - Integrated with expanded quarries at top/bottom
-    // Road A: Circle around top quarry area (quarry x: 20-612, y: 10-138)
+    // Road waypoints - Carved naturally through quarries
+    // Quarry A spans y: 0-140px, x: 0-1200px (full width)
+    // Road A curves left and right through the quarry
     const ROAD_A = [
-      // Station approach
-      { x: 600, y: 140 },       // Station entrance (at crane)
-      // Left side of quarry
-      { x: 50, y: 75 },         // Left top (above quarry)
-      { x: 10, y: 75 },         // Left pullover area
-      { x: 10, y: 135 },        // Left pullover (beside quarry)
-      // Right side of quarry
-      { x: 1150, y: 75 },       // Right top (above quarry)
-      { x: 1150, y: 135 },      // Right pullover (beside quarry)
+      // Start at station
+      { x: 600, y: 140 },       // Station entrance (above quarry)
+      // Left curve through quarry
+      { x: 300, y: 120 },       // Curve left, high
+      { x: 150, y: 70 },        // Left-center, medium depth
+      { x: 100, y: 30 },        // Far left, deep into quarry
+      { x: 150, y: 10 },        // Left-bottom corner
+      // Across bottom
+      { x: 600, y: 5 },         // Center-bottom (deepest point)
+      // Right curve through quarry
+      { x: 1050, y: 10 },       // Right-bottom corner
+      { x: 1100, y: 30 },       // Far right, deep into quarry
+      { x: 1050, y: 70 },       // Right-center, medium depth
+      { x: 900, y: 120 },       // Curve right, high
       // Back to station
       { x: 600, y: 140 }        // Station exit
     ];
 
-    // Road B: Circle around bottom quarry area (quarry x: 20-612, y: 570-698)
+    // Quarry B spans y: 560-700px, x: 0-1200px (full width) - mirror of Road A
     const ROAD_B = [
-      // Station approach
-      { x: 600, y: 560 },       // Station entrance (at crane)
-      // Left side of quarry
-      { x: 50, y: 625 },        // Left bottom (below quarry)
-      { x: 10, y: 625 },        // Left pullover area
-      { x: 10, y: 565 },        // Left pullover (beside quarry)
-      // Right side of quarry
-      { x: 1150, y: 625 },      // Right bottom (below quarry)
-      { x: 1150, y: 565 },      // Right pullover (beside quarry)
+      // Start at station
+      { x: 600, y: 560 },       // Station entrance (above quarry)
+      // Left curve through quarry
+      { x: 300, y: 580 },       // Curve left, near top
+      { x: 150, y: 630 },       // Left-center, medium depth
+      { x: 100, y: 670 },       // Far left, deep into quarry
+      { x: 150, y: 690 },       // Left-bottom corner
+      // Across bottom
+      { x: 600, y: 695 },       // Center-bottom (deepest point)
+      // Right curve through quarry
+      { x: 1050, y: 690 },      // Right-bottom corner
+      { x: 1100, y: 670 },      // Far right, deep into quarry
+      { x: 1050, y: 630 },      // Right-center, medium depth
+      { x: 900, y: 580 },       // Curve right, near top
       // Back to station
       { x: 600, y: 560 }        // Station exit
     ];
@@ -474,8 +485,8 @@
       },
       craneA: { ore: 0.0 },
       craneB: { ore: 0.0 },
-      quarryA: new Float32Array(296),  // 37 cols * 8 rows
-      quarryB: new Float32Array(296),  // 37 cols * 8 rows
+      quarryA: new Float32Array(480),  // 60 cols * 8 rows
+      quarryB: new Float32Array(480),  // 60 cols * 8 rows
       quarryAFlash: 0,  // Flash timer for quarry A
       quarryBFlash: 0,  // Flash timer for quarry B
       lastQuarryATotal: 0,  // Track previous fill state
@@ -489,8 +500,8 @@
       }
     };
 
-    // Initialize quarries: A full, B empty (37 cols * 8 rows = 296 cells)
-    for (let i = 0; i < 296; i++) {
+    // Initialize quarries: A full, B empty (60 cols * 8 rows = 480 cells)
+    for (let i = 0; i < 480; i++) {
       state.quarryA[i] = 7 + Math.random() * 1;
       state.quarryB[i] = 0 + Math.random() * 1;
     }
