@@ -734,17 +734,18 @@
             }
           }
         } else if (truck.phase === 'AT_PULLOVER') {
-          // Wait in pullover until truck ahead clears
-          let truckAhead = null;
+          // Wait in pullover until truck ahead clears (finishes loading and leaves)
+          let blockingTruck = null;
           for (const other of state.trucks) {
             if (other === truck || other.side !== truck.side) continue;
-            if (other.phase === 'AT_QUARRY' || other.roadDist >= PULLOVER_DIST - 50) {
-              truckAhead = other;
+            // Block if other truck is still loading or approaching quarry
+            if (other.phase === 'AT_QUARRY' || (other.phase === 'TO_QUARRY' && other.roadDist > truck.roadDist - 100)) {
+              blockingTruck = other;
               break;
             }
           }
 
-          if (!truckAhead) {
+          if (!blockingTruck) {
             // Path clear, resume
             truck.phase = 'TO_QUARRY';
           }
