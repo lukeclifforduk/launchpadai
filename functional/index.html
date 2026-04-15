@@ -286,33 +286,33 @@
     const EMPTY_THRESHOLD = 118;   // ~5%
     const FULL_THRESHOLD = 2250;   // ~95%
 
-    // Road waypoints - Integrated with quarries at top/bottom
-    // Road A: Circle around top quarry area
+    // Road waypoints - Integrated with expanded quarries at top/bottom
+    // Road A: Circle around top quarry area (quarry x: 20-612, y: 10-138)
     const ROAD_A = [
       // Station approach
       { x: 600, y: 140 },       // Station entrance (at crane)
       // Left side of quarry
-      { x: 200, y: 75 },        // Left top
-      { x: 100, y: 75 },        // Left pullover
-      { x: 100, y: 135 },       // Left bottom
+      { x: 50, y: 75 },         // Left top (above quarry)
+      { x: 10, y: 75 },         // Left pullover area
+      { x: 10, y: 135 },        // Left pullover (beside quarry)
       // Right side of quarry
-      { x: 1100, y: 75 },       // Right top
-      { x: 1100, y: 135 },      // Right pullover
+      { x: 1150, y: 75 },       // Right top (above quarry)
+      { x: 1150, y: 135 },      // Right pullover (beside quarry)
       // Back to station
       { x: 600, y: 140 }        // Station exit
     ];
 
-    // Road B: Circle around bottom quarry area
+    // Road B: Circle around bottom quarry area (quarry x: 20-612, y: 570-698)
     const ROAD_B = [
       // Station approach
       { x: 600, y: 560 },       // Station entrance (at crane)
       // Left side of quarry
-      { x: 200, y: 625 },       // Left bottom
-      { x: 100, y: 625 },       // Left pullover
-      { x: 100, y: 565 },       // Left top
+      { x: 50, y: 625 },        // Left bottom (below quarry)
+      { x: 10, y: 625 },        // Left pullover area
+      { x: 10, y: 565 },        // Left pullover (beside quarry)
       // Right side of quarry
-      { x: 1100, y: 625 },      // Right bottom
-      { x: 1100, y: 565 },      // Right pullover
+      { x: 1150, y: 625 },      // Right bottom (below quarry)
+      { x: 1150, y: 565 },      // Right pullover (beside quarry)
       // Back to station
       { x: 600, y: 560 }        // Station exit
     ];
@@ -1227,20 +1227,21 @@
         }
       }
 
-      drawRoads();
-      drawQuarries();
-      drawTrack();
-      drawStations();
-      drawCrane('A');
+      // Draw in logical order: background to foreground
+      drawQuarries();      // Quarries as background elements
+      drawRoads();         // Roads on top of quarries
+      drawTrack();         // Train track in middle area
+      drawStations();      // Stations are primary interactive points
+      drawCrane('A');      // Cranes handle ore transfer
       drawCrane('B');
-      drawLocomotive();
+      drawLocomotive();    // Moving elements on top
       for (let i = CARRIAGE_COUNT - 1; i >= 0; i--) {
         drawCarriage(i);
       }
       for (const truck of state.trucks) {
-        drawTruck(truck);
+        drawTruck(truck);   // Trucks moving around roads
       }
-      drawLabels();
+      drawLabels();        // Text labels last (always visible)
     }
 
     /* ===== SIDEBAR UI ===== */
