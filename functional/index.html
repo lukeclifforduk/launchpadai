@@ -555,6 +555,69 @@
       }
     }
 
+    /* ===== SPATIAL GRID SYSTEM ===== */
+    class SpatialGrid {
+      constructor(cellSize = 40) {
+        this.cellSize = cellSize;
+        this.cellsX = Math.ceil(CANVAS_W / cellSize);
+        this.cellsY = Math.ceil(CANVAS_H / cellSize);
+        this.cells = Array(this.cellsX).fill(null).map(() => Array(this.cellsY).fill(null).map(() => ({
+          trucks: [],
+          ore: []
+        })));
+      }
+
+      getCellCoords(x, y) {
+        const cx = Math.floor(x / this.cellSize);
+        const cy = Math.floor(y / this.cellSize);
+        return {
+          cx: Math.max(0, Math.min(cx, this.cellsX - 1)),
+          cy: Math.max(0, Math.min(cy, this.cellsY - 1))
+        };
+      }
+
+      addTruck(truck) {
+        const { cx, cy } = this.getCellCoords(truck.x, truck.y);
+        if (!this.cells[cx][cy].trucks.includes(truck)) {
+          this.cells[cx][cy].trucks.push(truck);
+        }
+      }
+
+      queryRadius(x, y, radius) {
+        const radiusCells = Math.ceil(radius / this.cellSize);
+        const { cx, cy } = this.getCellCoords(x, y);
+        const nearby = [];
+
+        for (let dx = -radiusCells; dx <= radiusCells; dx++) {
+          for (let dy = -radiusCells; dy <= radiusCells; dy++) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (nx >= 0 && nx < this.cellsX && ny >= 0 && ny < this.cellsY) {
+              nearby.push(...this.cells[nx][ny].trucks);
+            }
+          }
+        }
+
+        return nearby;
+      }
+
+      update(trucks) {
+        // Clear and rebuild grid
+        for (let x = 0; x < this.cellsX; x++) {
+          for (let y = 0; y < this.cellsY; y++) {
+            this.cells[x][y].trucks = [];
+          }
+        }
+
+        // Add all trucks to grid
+        for (const truck of trucks) {
+          this.addTruck(truck);
+        }
+      }
+    }
+
+    const spatialGrid = new SpatialGrid(40);
+
     /* ===== STATE OBJECT ===== */
     const state = {
       train: {
@@ -772,6 +835,65 @@
       return Array.from(q).reduce((s, h) => s + h, 0);
     }
 
+    /**
+     * Find nearest ore cell to truck position using proximity
+     * @param {Float32Array} quarry - quarry ore array
+     * @param {Object} quarryDef - quarry definition with cols/rows
+     * @param {number} truckX - truck world x position
+     * @param {number} truckY - truck world y position
+     * @param {number} radiusCells - search radius in cells (default 10)
+     * @returns {number} cell index of nearest ore, or -1 if none found
+     */
+    function findNearestOreCell(quarry, quarryDef, truckX, truckY, radiusCells = 10) {
+      // Convert truck world position to quarry grid coordinates
+      const relX = truckX - quarryDef.x;
+      const relY = truckY - quarryDef.y;
+      const truckCol = Math.floor(relX / quarryDef.cellSize);
+      const truckRow = Math.floor(relY / quarryDef.cellSize);
+
+      let bestIdx = -1;
+      let bestDist = Infinity;
+      let bestOre = -1;
+
+      // Search radius around truck
+      for (let r = 0; r < quarryDef.rows; r++) {
+        for (let c = 0; c < quarryDef.cols; c++) {
+          const distX = c - truckCol;
+          const distY = r - truckRow;
+          const dist = Math.sqrt(distX * distX + distY * distY);
+
+          if (dist <= radiusCells) {
+            const idx = r * quarryDef.cols + c;
+            const ore = quarry[idx];
+            // Prefer higher ore cells, but consider distance as tiebreaker
+            if (ore > 0 && (ore > bestOre || (ore === bestOre && dist < bestDist))) {
+              bestIdx = idx;
+              bestDist = dist;
+              bestOre = ore;
+            }
+          }
+        }
+      }
+
+      return bestIdx;
+    }
+
+    /**
+     * Remove ore from specific cell index
+     * @param {Float32Array} quarry - quarry ore array
+     * @param {number} cellIdx - cell index to extract from
+     * @param {number} amount - amount to extract
+     * @returns {number} actual amount extracted
+     */
+    function removeOreFromCell(quarry, cellIdx, amount) {
+      if (cellIdx < 0 || cellIdx >= quarry.length || quarry[cellIdx] <= 0) {
+        return 0;
+      }
+      const xfer = Math.min(quarry[cellIdx], amount);
+      quarry[cellIdx] -= xfer;
+      return xfer;
+    }
+
     function removeOreFromQuarry(q, amount) {
       let remaining = amount;
       // Remove from tallest cells first
@@ -857,11 +979,23 @@
       truck.bobbleTime += dt;
 
       if (truck.waitTimer <= 0) {
-        const removed = removeOreFromQuarry(
-          truck.side === 'A' ? state.quarryA : state.quarryB,
-          2.0
-        );
-        truck.ore = removed;
+        // Use proximity-based extraction instead of global removal
+        const quarry = truck.side === 'A' ? state.quarryA : state.quarryB;
+        const quarryDef = truck.side === 'A' ? QUARRY_A : QUARRY_B;
+
+        // Find nearest ore cell within 10-cell radius
+        const cellIdx = findNearestOreCell(quarry, quarryDef, truck.x, truck.y, 10);
+
+        if (cellIdx >= 0) {
+          // Extract from that specific cell
+          truck.ore = removeOreFromCell(quarry, cellIdx, 2.0);
+          truck.targetCellIdx = cellIdx; // Track for visual feedback
+        } else {
+          // No ore nearby, extract globally as fallback
+          truck.ore = removeOreFromQuarry(quarry, 2.0);
+          truck.targetCellIdx = -1;
+        }
+
         truck.phase = 'TO_CRANE';
         truck.bobbleTime = 0;
       }
@@ -1555,6 +1689,9 @@
       lastTs = ts;
 
       state.stats.totalTime += dt;
+
+      // Update spatial grid for proximity queries
+      spatialGrid.update(state.trucks);
 
       updateTrain(dt);
       updateCranes(dt);
