@@ -2241,8 +2241,6 @@
       const minutes = Math.floor(state.stats.totalTime / 60);
       const seconds = Math.floor(state.stats.totalTime % 60);
       document.getElementById('metricsTime').textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
-
-      document.getElementById('metricsFlow').textContent = state.isReversed ? 'B→A' : 'A→B';
     }
 
     /* ===== GAME LOOP ===== */
