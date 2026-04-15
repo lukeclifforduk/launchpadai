@@ -710,18 +710,19 @@
         }
 
         if (truck.phase === 'IDLE') {
+          // Determine next phase based on reversal state and which side truck is on
           if (!state.isReversed && truck.side === 'A') {
             truck.phase = 'TO_QUARRY';
-            truck.roadDist = 0;
+            // roadDist stays at current position (station), will naturally move toward quarry
           } else if (state.isReversed && truck.side === 'B') {
             truck.phase = 'TO_QUARRY';
-            truck.roadDist = 0;
+            // roadDist stays at current position (station), will naturally move toward quarry
           } else if (!state.isReversed && truck.side === 'B') {
             truck.phase = 'TO_CRANE';
-            truck.roadDist = 0;
+            // roadDist stays at current position, will naturally move toward station
           } else if (state.isReversed && truck.side === 'A') {
             truck.phase = 'TO_CRANE';
-            truck.roadDist = 0;
+            // roadDist stays at current position, will naturally move toward station
           }
           continue;
         }
@@ -784,7 +785,7 @@
             );
             truck.ore = removed;
             truck.phase = 'TO_CRANE';
-            truck.roadDist = roadLen;
+            // Don't snap to roadLen; truck will naturally move backward from current position
             truck.bobbleTime = 0;
           }
         } else if (truck.phase === 'TO_CRANE') {
