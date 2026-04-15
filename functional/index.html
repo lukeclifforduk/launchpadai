@@ -13,8 +13,8 @@
 
     body {
       font-family: 'Courier New', monospace;
-      background: #0a0905;
-      color: #d0c8b8;
+      background: #1a1f2e;
+      color: #e0e6f0;
       overflow: hidden;
       display: flex;
       justify-content: center;
@@ -26,15 +26,15 @@
       display: flex;
       width: 1400px;
       height: 700px;
-      background: #1a1815;
-      border: 2px solid #4a3a2a;
+      background: #2a3045;
+      border: 3px solid #0066cc;
     }
 
     #gameCanvas {
       width: 1200px;
       height: 700px;
       flex: none;
-      background: #2a251f;
+      background: #3a4555;
       display: block;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -42,33 +42,36 @@
 
     #sidebar {
       width: 200px;
-      background: #0f0d0a;
-      border-left: 3px solid #4a3a2a;
-      padding: 10px;
+      background: #1e2633;
+      border-left: 4px solid #0066cc;
+      padding: 15px;
       overflow-y: auto;
-      font-size: 9px;
-      line-height: 1.4;
-      color: #b8b0a0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #e0e6f0;
       flex: none;
     }
 
     #sidebar::-webkit-scrollbar {
-      width: 5px;
+      width: 8px;
     }
 
     #sidebar::-webkit-scrollbar-track {
-      background: #1a1815;
+      background: #2a3045;
     }
 
     #sidebar::-webkit-scrollbar-thumb {
-      background: #4a3a2a;
-      border-radius: 2px;
+      background: #0066cc;
+      border-radius: 4px;
     }
 
     .section {
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid #3a2a1a;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #0066cc;
+      background: #2a3245;
+      padding: 8px;
+      border-radius: 4px;
     }
 
     .section:last-child {
@@ -76,62 +79,62 @@
     }
 
     .section h3 {
-      font-size: 10px;
+      font-size: 13px;
       font-weight: bold;
-      color: #b8a878;
-      margin-bottom: 4px;
+      color: #00d9ff;
+      margin-bottom: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
-      border-bottom: 1px solid #3a3020;
-      padding-bottom: 2px;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #0066cc;
+      padding-bottom: 4px;
     }
 
     .stat-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 2px;
-      font-size: 8px;
+      margin-bottom: 4px;
+      font-size: 11px;
     }
 
     .stat-label {
-      color: #8a7a68;
+      color: #b0d0ff;
       flex: 1;
     }
 
     .stat-value {
-      color: #d8d0c0;
+      color: #00ff88;
       font-weight: bold;
       text-align: right;
       flex: 0 0 70px;
     }
 
     .progress-bar {
-      background: #1a1815;
-      height: 8px;
-      margin: 3px 0;
-      border: 1px solid #3a2a1a;
+      background: #1a2030;
+      height: 10px;
+      margin: 5px 0;
+      border: 1px solid #0066cc;
       overflow: hidden;
-      border-radius: 2px;
+      border-radius: 3px;
     }
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #8b6f47, #c4a870);
+      background: linear-gradient(90deg, #00d9ff, #00ff88);
       transition: width 0.1s linear;
     }
 
     .carriage-bar {
-      background: #0f0d0a;
-      height: 6px;
-      margin: 1px 0;
-      border: 1px solid #2a2015;
+      background: #1a2030;
+      height: 8px;
+      margin: 2px 0;
+      border: 1px solid #0066cc;
       overflow: hidden;
-      border-radius: 1px;
+      border-radius: 2px;
     }
 
     .carriage-fill {
       height: 100%;
-      background: #a87a3a;
+      background: linear-gradient(90deg, #ff6600, #ff9900);
       transition: width 0.1s linear;
     }
   </style>
@@ -241,29 +244,34 @@
     const CANVAS_W = 1200, CANVAS_H = 700;
     const CELL = 16; // terrain tile size
 
-    // Oval track (rounded rectangle)
+    // Oval track (rounded rectangle) - Middle 3/5 of canvas
+    // Top 1/5: 0-140px (Quarry A)
+    // Middle 3/5: 140-560px (Train tracks)
+    // Bottom 1/5: 560-700px (Quarry B)
     const TK = {
       LEFT: 150,
       RIGHT: 1050,
-      TOP: 100,
-      BOTTOM: 600,
+      TOP: 200,      // Moved down from 100
+      BOTTOM: 500,   // Moved up from 600
       RADIUS: 100
     };
 
     const CRUISE_SPEED = 52.95;  // px/sec
     const ACCEL_DIST = 150;      // px for accel/decel ramp
 
-    // Station locations (pixel coords on track)
-    const STATION_A = { x: 300, y: 100 };   // top straight
-    const STATION_B = { x: 900, y: 600 };  // bottom straight
+    // Station locations (pixel coords on track) - Top and bottom middle
+    const STATION_A = { x: 600, y: 155 };   // top-middle, above quarry A
+    const STATION_B = { x: 600, y: 545 };   // bottom-middle, below quarry B
 
-    // Quarries (pixel coords + grid size) - enlarged to 30px cells
-    const QUARRY_A = { x: 150, y: 120, cols: 10, rows: 8, cellSize: 30 };   // upper-left
-    const QUARRY_B = { x: 850, y: 380, cols: 10, rows: 8, cellSize: 30 };   // lower-right
+    // Quarries (pixel coords + grid size) - Much larger, occupy most of top/bottom regions
+    // Top 1/5: 0-140px height, spanning most of width
+    // Bottom 1/5: 560-700px height, spanning most of width
+    const QUARRY_A = { x: 20, y: 10, cols: 37, rows: 8, cellSize: 16 };   // Top 1/5, much wider grid
+    const QUARRY_B = { x: 20, y: 570, cols: 37, rows: 8, cellSize: 16 };  // Bottom 1/5, much wider grid
 
-    // Cranes
-    const CRANE_A = { x: 300, baseY: 85 };
-    const CRANE_B = { x: 900, baseY: 580 };
+    // Cranes - positioned above/below quarries
+    const CRANE_A = { x: 600, baseY: 140 };  // Just above Quarry A
+    const CRANE_B = { x: 600, baseY: 560 };  // Just below Quarry B
 
     const CARRIAGE_COUNT = 5;
     const CARRIAGE_CAPACITY = 8;
@@ -274,39 +282,39 @@
     const TRUCKS_PER_STATION = 3;
     const DAY_CYCLE_SECS = 120.0;
 
-    const MAX_QUARRY_ORE = 640;    // 10×8×8
-    const EMPTY_THRESHOLD = 32;    // ~5%
-    const FULL_THRESHOLD = 608;    // ~95%
+    const MAX_QUARRY_ORE = 2368;   // 37×8×8
+    const EMPTY_THRESHOLD = 118;   // ~5%
+    const FULL_THRESHOLD = 2250;   // ~95%
 
-    // Road waypoints - oval circuits with pullover areas
+    // Road waypoints - Integrated with expanded quarries at top/bottom
+    // Road A: Circle around top quarry area (quarry x: 20-612, y: 10-138)
     const ROAD_A = [
-      // Approach from top
-      { x: 300, y: 85 },        // Station entrance
-      { x: 300, y: 140 },       // Move down
-      // Left side going down
-      { x: 100, y: 140 },       // Left turn
-      { x: 100, y: 370 },       // Left side pullover area
-      // Bottom going right
-      { x: 500, y: 370 },       // Bottom right corner
-      { x: 500, y: 140 },       // Right side pullover area
-      // Top right back to station
-      { x: 300, y: 140 },       // Back to approach
-      { x: 300, y: 85 }         // Station exit
+      // Station approach
+      { x: 600, y: 140 },       // Station entrance (at crane)
+      // Left side of quarry
+      { x: 50, y: 75 },         // Left top (above quarry)
+      { x: 10, y: 75 },         // Left pullover area
+      { x: 10, y: 135 },        // Left pullover (beside quarry)
+      // Right side of quarry
+      { x: 1150, y: 75 },       // Right top (above quarry)
+      { x: 1150, y: 135 },      // Right pullover (beside quarry)
+      // Back to station
+      { x: 600, y: 140 }        // Station exit
     ];
 
+    // Road B: Circle around bottom quarry area (quarry x: 20-612, y: 570-698)
     const ROAD_B = [
-      // Approach from bottom
-      { x: 900, y: 620 },       // Station entrance
-      { x: 900, y: 570 },       // Move up
-      // Right side going up
-      { x: 1100, y: 570 },      // Right turn
-      { x: 1100, y: 340 },      // Right side pullover area
-      // Top going left
-      { x: 600, y: 340 },       // Top left corner
-      { x: 600, y: 570 },       // Left side pullover area
-      // Bottom left back to station
-      { x: 900, y: 570 },       // Back to approach
-      { x: 900, y: 620 }        // Station exit
+      // Station approach
+      { x: 600, y: 560 },       // Station entrance (at crane)
+      // Left side of quarry
+      { x: 50, y: 625 },        // Left bottom (below quarry)
+      { x: 10, y: 625 },        // Left pullover area
+      { x: 10, y: 565 },        // Left pullover (beside quarry)
+      // Right side of quarry
+      { x: 1150, y: 625 },      // Right bottom (below quarry)
+      { x: 1150, y: 565 },      // Right pullover (beside quarry)
+      // Back to station
+      { x: 600, y: 560 }        // Station exit
     ];
 
     /* ===== PATH SYSTEM ===== */
@@ -466,8 +474,8 @@
       },
       craneA: { ore: 0.0 },
       craneB: { ore: 0.0 },
-      quarryA: new Float32Array(80),
-      quarryB: new Float32Array(80),
+      quarryA: new Float32Array(296),  // 37 cols * 8 rows
+      quarryB: new Float32Array(296),  // 37 cols * 8 rows
       quarryAFlash: 0,  // Flash timer for quarry A
       quarryBFlash: 0,  // Flash timer for quarry B
       lastQuarryATotal: 0,  // Track previous fill state
@@ -481,19 +489,20 @@
       }
     };
 
-    // Initialize quarries: A full, B empty
-    for (let i = 0; i < 80; i++) {
+    // Initialize quarries: A full, B empty (37 cols * 8 rows = 296 cells)
+    for (let i = 0; i < 296; i++) {
       state.quarryA[i] = 7 + Math.random() * 1;
       state.quarryB[i] = 0 + Math.random() * 1;
     }
 
     // Truck colors - warm earthy palette
     const TRUCK_COLORS = [
-      '#d4554a',  // warm red
-      '#d4843a',  // orange
-      '#c8943a',  // burnt orange
-      '#a88550',  // tan
-      '#8b7a4a'   // brown
+      '#ff1744',  // vibrant red
+      '#ff9100',  // vibrant orange
+      '#ffeb3b',  // bright yellow
+      '#00ff00',  // bright green
+      '#2196f3',  // bright blue
+      '#9c27b0'   // purple
     ];
 
     // Initialize trucks with unique colors
@@ -707,25 +716,31 @@
         }
 
         if (truck.phase === 'TO_QUARRY') {
-          // Check for truck ahead blocking the path
-          let truckAhead = null;
-          let minDist = Infinity;
+          // Advanced collision avoidance: count trucks ahead and maintain safe distance
+          let trucksAhead = 0;
+          let closestDist = Infinity;
+
           for (const other of state.trucks) {
             if (other === truck || other.side !== truck.side) continue;
-            if (other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') {
-              const dist = other.roadDist - truck.roadDist;
-              if (dist > 0 && dist < minDist) {
-                minDist = dist;
-                truckAhead = other;
-              }
+            const dist = other.roadDist - truck.roadDist;
+
+            // Count trucks in quarry or approaching
+            if ((other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') && dist > 0) {
+              trucksAhead++;
+              closestDist = Math.min(closestDist, dist);
             }
           }
 
-          if (truckAhead && minDist < 80) {
+          // Adaptive spacing: increase spacing if multiple trucks ahead
+          const safeDistance = 80 + (trucksAhead * 20);
+
+          if (closestDist < safeDistance && closestDist !== Infinity) {
             // Truck ahead too close, go to pullover
             truck.phase = 'AT_PULLOVER';
             truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
+            truck.waitTimer = 0;
           } else {
+            // Safe to proceed
             truck.roadDist += TRUCK_SPEED * dt;
             if (truck.roadDist >= PULLOVER_DIST) {
               truck.roadDist = PULLOVER_DIST;
@@ -734,20 +749,20 @@
             }
           }
         } else if (truck.phase === 'AT_PULLOVER') {
-          // Wait in pullover until truck ahead clears (finishes loading and leaves)
-          let blockingTruck = null;
+          // Smart pullover: wait if any truck on same side is at quarry
+          let quarryOccupied = false;
           for (const other of state.trucks) {
             if (other === truck || other.side !== truck.side) continue;
-            // Block if other truck is still loading or approaching quarry
-            if (other.phase === 'AT_QUARRY' || (other.phase === 'TO_QUARRY' && other.roadDist > truck.roadDist - 100)) {
-              blockingTruck = other;
+            if (other.phase === 'AT_QUARRY') {
+              quarryOccupied = true;
               break;
             }
           }
 
-          if (!blockingTruck) {
-            // Path clear, resume
+          if (!quarryOccupied) {
+            // Quarry is free, resume to quarry
             truck.phase = 'TO_QUARRY';
+            // Don't reset roadDist - continue from where pullover started
           }
         } else if (truck.phase === 'AT_QUARRY') {
           truck.waitTimer -= dt;
@@ -854,9 +869,10 @@
         for (let tx = 0; tx < CANVAS_W / CELL; tx++) {
           const v = terrainRng();
           let color;
-          if (v < 0.4) color = '#3a5c2a';      // grass
-          else if (v < 0.7) color = '#6b4c2a'; // dirt
-          else color = '#5a5045';               // gravel
+          // Use darker, more muted tones that match the blue/gray background
+          if (v < 0.4) color = '#2a4a4a';      // dark teal/grass
+          else if (v < 0.7) color = '#3a4555'; // dark blue/dirt
+          else color = '#4a5566';               // gray/gravel
 
           ctx.fillStyle = color;
           ctx.fillRect(tx * CELL, ty * CELL, CELL, CELL);
@@ -866,10 +882,21 @@
 
     function drawRoads() {
       const drawRoad = (road) => {
-        ctx.strokeStyle = '#7a5c3a';
-        ctx.lineWidth = 8;
+        // Bright green roads - integrated with quarries
+        ctx.strokeStyle = '#00dd44';
+        ctx.lineWidth = 12;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(road[0].x, road[0].y);
+        for (let i = 1; i < road.length; i++) {
+          ctx.lineTo(road[i].x, road[i].y);
+        }
+        ctx.stroke();
+
+        // Darker green outline for definition
+        ctx.strokeStyle = '#00aa33';
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(road[0].x, road[0].y);
         for (let i = 1; i < road.length; i++) {
@@ -885,26 +912,32 @@
     function drawQuarries() {
       const drawQuarry = (q, quarryDef, flashTimer) => {
         const { x, y, cols, rows, cellSize } = quarryDef;
-        ctx.fillStyle = '#2a1a0a';
-        ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
+        // Background for quarry
+        ctx.fillStyle = '#1a2535';
+        ctx.fillRect(x - 2, y - 2, cols * cellSize + 4, rows * cellSize + 4);
+        ctx.strokeStyle = '#0066cc';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 2, y - 2, cols * cellSize + 4, rows * cellSize + 4);
 
         for (let row = 0; row < rows; row++) {
           for (let col = 0; col < cols; col++) {
             const idx = row * cols + col;
             const h = q[idx] || 0;
 
+            // Color gradient: empty (dark) to full (bright yellow/orange)
             let color;
-            if (h < 2) color = '#c8a870';
-            else if (h < 4) color = '#a88860';
-            else if (h < 6) color = '#7a6a50';
-            else color = '#3a3028';
+            if (h < 1) color = '#1a3a55';           // empty: dark blue
+            else if (h < 2) color = '#ff6600';      // low: orange
+            else if (h < 4) color = '#ff8800';      // medium: bright orange
+            else if (h < 6) color = '#ffaa00';      // high: bright amber
+            else color = '#ffdd00';                 // full: bright yellow
 
             ctx.fillStyle = color;
             ctx.fillRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
 
-            // Cell border (thinner)
-            ctx.strokeStyle = '#2a1a0a';
-            ctx.lineWidth = 0.5;
+            // Cell border (bright for visibility)
+            ctx.strokeStyle = '#003366';
+            ctx.lineWidth = 1;
             ctx.strokeRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
           }
         }
@@ -912,8 +945,8 @@
         // Flash effect when fill state changes
         if (flashTimer > 0) {
           const flashAlpha = Math.min(1, flashTimer / 0.3 * 0.3);
-          ctx.fillStyle = `rgba(255, 255, 150, ${flashAlpha * 0.5})`;
-          ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
+          ctx.fillStyle = `rgba(0, 255, 136, ${flashAlpha * 0.6})`;
+          ctx.fillRect(x - 2, y - 2, cols * cellSize + 4, rows * cellSize + 4);
         }
       };
 
@@ -923,12 +956,12 @@
 
     function drawStations() {
       const drawStation = (loc, x, y) => {
-        // Building
-        ctx.fillStyle = '#8b7355';
+        // Building - bright teal/cyan
+        ctx.fillStyle = '#00d9ff';
         ctx.fillRect(x - 20, y - 20, 40, 30);
 
-        // Roof
-        ctx.fillStyle = '#5a4a3a';
+        // Roof - darker blue
+        ctx.fillStyle = '#0099cc';
         ctx.beginPath();
         ctx.moveTo(x - 20, y - 20);
         ctx.lineTo(x, y - 30);
@@ -936,17 +969,17 @@
         ctx.closePath();
         ctx.fill();
 
-        // Windows
-        ctx.fillStyle = '#d4b896';
+        // Windows - bright yellow
+        ctx.fillStyle = '#ffff00';
         ctx.fillRect(x - 12, y - 15, 8, 8);
         ctx.fillRect(x + 4, y - 15, 8, 8);
 
-        // Door
-        ctx.fillStyle = '#3a2a1a';
+        // Door - dark
+        ctx.fillStyle = '#003366';
         ctx.fillRect(x - 6, y - 2, 12, 12);
 
-        // Platform
-        ctx.fillStyle = '#6b5a4a';
+        // Platform - orange
+        ctx.fillStyle = '#ff9900';
         ctx.fillRect(x - 25, y + 10, 50, 6);
       };
 
@@ -955,8 +988,8 @@
     }
 
     function drawTrack() {
-      // Sleepers
-      ctx.fillStyle = '#6b5a4a';
+      // Sleepers - bright orange/brown
+      ctx.fillStyle = '#ff9900';
       for (let i = 0; i < PATH_WAYPOINTS.length; i += 16) {
         const p = PATH_WAYPOINTS[i];
         const angle = angleAtDist(PATH_CUMULATIVE[i]);
@@ -967,9 +1000,9 @@
         ctx.restore();
       }
 
-      // Rails
-      ctx.strokeStyle = '#4a4a4a';
-      ctx.lineWidth = 2;
+      // Rails - bright steel blue
+      ctx.strokeStyle = '#00ddff';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(PATH_WAYPOINTS[0].x - 3, PATH_WAYPOINTS[0].y);
       for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
@@ -989,8 +1022,8 @@
       const crane = (side === 'A') ? CRANE_A : CRANE_B;
       const y = crane.baseY;
 
-      // Legs
-      ctx.strokeStyle = '#7a5a3a';
+      // Legs - bright red
+      ctx.strokeStyle = '#ff1744';
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
@@ -1002,29 +1035,29 @@
       ctx.lineTo(crane.x + 15, y + 40);
       ctx.stroke();
 
-      // Beam
-      ctx.strokeStyle = '#8b6a4a';
-      ctx.lineWidth = 4;
+      // Beam - bright red
+      ctx.strokeStyle = '#ff1744';
+      ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
       ctx.lineTo(crane.x + 15, y);
       ctx.stroke();
 
-      // Trolley
+      // Trolley - bright yellow
       const trolleyX = crane.x - 10 + ((side === 'A') ? state.craneA.ore : state.craneB.ore) * 2;
-      ctx.fillStyle = '#a87a4a';
+      ctx.fillStyle = '#ffff00';
       ctx.fillRect(trolleyX - 8, y - 4, 16, 8);
 
-      // Hook
-      ctx.strokeStyle = '#6a5a4a';
+      // Hook - bright yellow
+      ctx.strokeStyle = '#ffff00';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(trolleyX, y + 4);
       ctx.lineTo(trolleyX, y + 20);
       ctx.stroke();
 
-      // Stacked ore
-      ctx.fillStyle = '#c8a870';
+      // Stacked ore - bright orange
+      ctx.fillStyle = '#ff9900';
       const oreCount = Math.floor((side === 'A') ? state.craneA.ore : state.craneB.ore);
       for (let i = 0; i < oreCount && i < 8; i++) {
         ctx.fillRect(trolleyX - 6, y + 20 + i * 3, 12, 3);
@@ -1041,33 +1074,33 @@
       ctx.rotate(angle);
       ctx.scale(1.5, 1.5);  // Scale train 1.5x
 
-      // Body
-      ctx.fillStyle = '#3a2a1a';
+      // Body - bright red
+      ctx.fillStyle = '#ff1744';
       ctx.fillRect(-12, -8, 24, 16);
 
-      // Cab
-      ctx.fillStyle = '#5a4a3a';
+      // Cab - dark blue
+      ctx.fillStyle = '#0066cc';
       ctx.fillRect(8, -7, 8, 14);
 
-      // Windows
-      ctx.fillStyle = '#d4c8a8';
+      // Windows - bright yellow
+      ctx.fillStyle = '#ffff00';
       ctx.fillRect(9, -5, 4, 4);
       ctx.fillRect(9, 1, 4, 4);
 
-      // Boiler stripe
-      ctx.strokeStyle = '#8b7a6a';
+      // Boiler stripe - bright cyan
+      ctx.strokeStyle = '#00ddff';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(-8, 0);
       ctx.lineTo(8, 0);
       ctx.stroke();
 
-      // Chimney
-      ctx.fillStyle = '#4a3a2a';
+      // Chimney - dark gray
+      ctx.fillStyle = '#444444';
       ctx.fillRect(-6, -10, 4, 4);
 
-      // Wheels
-      ctx.fillStyle = '#2a1a0a';
+      // Wheels - black/dark
+      ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(-8, 8, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -1090,17 +1123,17 @@
       ctx.rotate(angle);
       ctx.scale(1.5, 1.5);  // Scale carriages 1.5x to match train
 
-      // Body
-      ctx.fillStyle = '#6b5a4a';
+      // Body - dark blue
+      ctx.fillStyle = '#0066cc';
       ctx.fillRect(-10, -6, 20, 12);
 
-      // Ore visualization
-      ctx.fillStyle = '#c8a870';
+      // Ore visualization - bright yellow/orange gradient
+      ctx.fillStyle = '#ffaa00';
       const oreHeight = (carriage.ore / CARRIAGE_CAPACITY) * 6;
       ctx.fillRect(-8, -2 - oreHeight, 16, oreHeight);
 
-      // Wheels
-      ctx.fillStyle = '#2a1a0a';
+      // Wheels - black
+      ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(-6, 6, 3, 0, Math.PI * 2);
       ctx.fill();
@@ -1125,24 +1158,43 @@
       ctx.rotate(angle);
       ctx.scale(1.5, 1.5);  // Scale trucks 1.5x
 
-      // Get truck color
+      // Get truck color (cabin color)
       const truckColor = TRUCK_COLORS[truck.colorIdx % TRUCK_COLORS.length];
 
-      // Cabin
+      // Add state-based glow/outline
+      if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
+        // Bright glow when loading/unloading
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -5, 20, 12);
+      } else if (truck.phase === 'AT_PULLOVER') {
+        // Warning glow when waiting
+        ctx.strokeStyle = '#ff6600';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -5, 20, 12);
+      }
+
+      // Cabin - vibrant color
       ctx.fillStyle = truckColor;
       ctx.fillRect(-8, -4, 6, 8);
 
-      // Body
-      ctx.fillStyle = '#6b5a4a';
+      // Body - darker shade based on load state
+      if (truck.ore > 0) {
+        ctx.fillStyle = '#666666';  // Lighter gray when loaded
+      } else {
+        ctx.fillStyle = '#333333';  // Darker gray when empty
+      }
       ctx.fillRect(-2, -5, 12, 10);
 
-      // Ore in body
-      ctx.fillStyle = '#c8a870';
-      const oreHeight = (truck.ore / 2.0) * 4;
-      ctx.fillRect(0, -3 - oreHeight, 8, oreHeight);
+      // Ore in body - bright orange/yellow
+      if (truck.ore > 0) {
+        ctx.fillStyle = '#ffaa00';
+        const oreHeight = (truck.ore / 2.0) * 4;
+        ctx.fillRect(0, -3 - oreHeight, 8, oreHeight);
+      }
 
-      // Wheels
-      ctx.fillStyle = '#2a1a0a';
+      // Wheels - black
+      ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(-4, 5, 2, 0, Math.PI * 2);
       ctx.fill();
@@ -1163,51 +1215,54 @@
     }
 
     function drawLabels() {
-      // Time
+      // Time display
       const minutes = Math.floor(state.stats.totalTime / 60);
       const seconds = Math.floor(state.stats.totalTime % 60);
       const timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
-      ctx.fillStyle = '#d4c8a8';
-      ctx.font = 'bold 12px Courier New';
-      ctx.textAlign = 'right';
-      ctx.fillText(timeStr, CANVAS_W - 10, 20);
-
-      // Flow arrow
+      // Time in bright cyan
+      ctx.fillStyle = '#00d9ff';
       ctx.font = 'bold 14px Courier New';
+      ctx.textAlign = 'right';
+      ctx.fillText(timeStr, CANVAS_W - 10, 25);
+
+      // Flow direction indicator - bright green/red based on direction
+      ctx.fillStyle = state.isReversed ? '#ff1744' : '#00dd44';
+      ctx.font = 'bold 16px Courier New';
       ctx.textAlign = 'left';
-      ctx.fillText(state.isReversed ? '◄ B→A' : 'A→B ►', 10, 20);
+      ctx.fillText(state.isReversed ? '◄ B→A' : 'A→B ►', 10, 25);
     }
 
     function render() {
-      // Simple dot pattern background instead of varied terrain
-      ctx.fillStyle = '#1a1815';
+      // Fill canvas with solid background color
+      ctx.fillStyle = '#3a4555';
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // Subtle dot pattern
-      ctx.fillStyle = '#2a251f';
+      // Subtle dot pattern for visual interest
+      ctx.fillStyle = '#4a5566';
       for (let x = 0; x < CANVAS_W; x += 20) {
         for (let y = 0; y < CANVAS_H; y += 20) {
           ctx.beginPath();
-          ctx.arc(x + 10, y + 10, 1, 0, Math.PI * 2);
+          ctx.arc(x + 10, y + 10, 1.5, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      drawRoads();
-      drawQuarries();
-      drawTrack();
-      drawStations();
-      drawCrane('A');
+      // Draw in logical order: background to foreground
+      drawQuarries();      // Quarries as background elements
+      drawRoads();         // Roads on top of quarries
+      drawTrack();         // Train track in middle area
+      drawStations();      // Stations are primary interactive points
+      drawCrane('A');      // Cranes handle ore transfer
       drawCrane('B');
-      drawLocomotive();
+      drawLocomotive();    // Moving elements on top
       for (let i = CARRIAGE_COUNT - 1; i >= 0; i--) {
         drawCarriage(i);
       }
       for (const truck of state.trucks) {
-        drawTruck(truck);
+        drawTruck(truck);   // Trucks moving around roads
       }
-      drawLabels();
+      drawLabels();        // Text labels last (always visible)
     }
 
     /* ===== SIDEBAR UI ===== */
@@ -1231,8 +1286,8 @@
       for (let i = 0; i < CARRIAGE_COUNT; i++) {
         const pct = (train.carriages[i].ore / CARRIAGE_CAPACITY) * 100;
         carriageHTML += `
-          <div style="margin: 2px 0;">
-            <div style="font-size: 7px; color: #8a7a68;">#${i + 1}</div>
+          <div style="margin: 3px 0;">
+            <div style="font-size: 10px; color: #00d9ff;">#${i + 1}</div>
             <div class="carriage-bar">
               <div class="carriage-fill" style="width: ${pct}%;"></div>
             </div>
