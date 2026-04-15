@@ -160,7 +160,11 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">Cargo:</span>
-          <span class="stat-value" id="trainCargo">0/40</span>
+          <span class="stat-value" id="trainCargo">0/8</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Status:</span>
+          <span class="stat-value" id="trainStatus">WAITING</span>
         </div>
       </div>
 
@@ -273,11 +277,15 @@
     const CRANE_A = { x: 600, baseY: 140 };  // Just above Quarry A
     const CRANE_B = { x: 600, baseY: 560 };  // Just below train tracks, above Quarry B
 
-    const CARRIAGE_COUNT = 5;
-    const CARRIAGE_CAPACITY = 8;
-    const CARRIAGE_SPACING = 32;  // px center-to-center
+    const CARRIAGE_COUNT = 2;         // Reduced for frequent dispatches
+    const CARRIAGE_CAPACITY = 4;      // Reduced for more game activity
+    const CARRIAGE_SPACING = 32;      // px center-to-center
 
-    const DWELL_TIME = 9.0;        // seconds
+    // Train dispatch logic
+    const DWELL_TIME = 5.0;           // Max time train waits at station
+    const TARGET_LOAD_CAPACITY = 6;   // Depart when this full (3/4 of 8 max)
+    const MIN_LOADED_TO_DEPART = 1;   // Won't leave completely empty
+    const URGENT_LOAD_CAPACITY = 4;   // Depart sooner if crane is ready
     const TRUCK_SPEED = 28;        // px/sec (slower for better pacing)
     const TRUCKS_PER_STATION = 4;  // increased from 3 for more activity
     const DAY_CYCLE_SECS = 120.0;
@@ -1083,13 +1091,38 @@
 
     function canTrainDispatch() {
       const train = state.train;
-      return train.phase === 'DOCKED' && train.dwellTimer <= 0;
+      if (train.phase !== 'DOCKED') return false;
+
+      // Calculate total cargo loaded
+      let cargoLoaded = 0;
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        cargoLoaded += train.carriages[i].ore;
+      }
+
+      const maxCapacity = CARRIAGE_COUNT * CARRIAGE_CAPACITY;  // 8 blocks max
+      const crane = (train.atStation === 'A') ? state.craneA : state.craneB;
+
+      // Smart dispatch rules:
+      // 1. If max dwell time expired, depart regardless
+      if (train.dwellTimer <= 0) return true;
+
+      // 2. If cargo >= target capacity, depart
+      if (cargoLoaded >= TARGET_LOAD_CAPACITY) return true;
+
+      // 3. If crane is READY and cargo >= urgent threshold, depart sooner
+      if (craneReadyToLoadTrain(crane) && cargoLoaded >= URGENT_LOAD_CAPACITY) return true;
+
+      // 4. Never leave with nothing if anything is coming
+      if (cargoLoaded < MIN_LOADED_TO_DEPART && crane.ore > 0) return false;
+
+      return false;
     }
 
     function updateTrainMovement(train, dt) {
       if (train.phase === 'DOCKED') {
         train.dwellTimer -= dt;
-        if (train.dwellTimer <= 0) {
+        // Auto-dispatch when conditions are met
+        if (canTrainDispatch()) {
           train.phase = 'ACCEL';
         }
         return BehaviorStatus.RUNNING;
@@ -1750,6 +1783,22 @@
 
       const trainCargo = train.carriages.reduce((s, c) => s + c.ore, 0);
       document.getElementById('trainCargo').textContent = `${Math.round(trainCargo)}/${CARRIAGE_COUNT * CARRIAGE_CAPACITY}`;
+
+      // Train dispatch status indicator
+      let statusText = 'WAITING';
+      if (train.phase === 'DOCKED') {
+        if (canTrainDispatch()) {
+          statusText = 'READY!';
+        } else {
+          const craneA = state.craneA.ore > 0 ? 'A' : '';
+          const craneB = state.craneB.ore > 0 ? 'B' : '';
+          const cranes = craneA + craneB;
+          statusText = cranes ? `Loading (${cranes})` : 'Waiting';
+        }
+      } else {
+        statusText = train.phase;
+      }
+      document.getElementById('trainStatus').textContent = statusText;
 
       // Carriages list
       let carriageHTML = '';
