@@ -38,12 +38,12 @@ const CONFIG = {
   // Train system parameters
   train: {
     speed: 200,             // Pixels per second (full loop ~25 seconds)
-    locoWidth: 48,          // Locomotive width
-    locoHeight: 36,         // Locomotive height
-    carriageWidth: 40,      // Carriage width
-    carriageHeight: 30,     // Carriage height
+    locoWidth: 64,          // Locomotive width (increased for visibility)
+    locoHeight: 40,         // Locomotive height (increased for visibility)
+    carriageWidth: 56,      // Carriage width (increased for visibility)
+    carriageHeight: 36,     // Carriage height (increased for visibility)
     carriageCount: 5,       // Number of cargo carriages
-    carriageSpacing: 50     // Distance between carriages (pixels along path)
+    carriageSpacing: 60     // Distance between carriages (pixels along path)
   },
 
   // Color palette (matches CSS variables)
@@ -479,13 +479,13 @@ class Renderer {
     if (!this.ctx) return;
 
     const waypoints = trackSystem.waypoints;
-    const trackWidth = 30;        // Total width between outer rails
-    const railWidth = 2;          // Width of each rail line
-    const sleeperWidth = 12;      // Width of sleeper ties
+    const trackWidth = 50;        // Total width between outer rails (increased for visibility)
+    const railWidth = 3;          // Width of each rail line
+    const sleeperWidth = 16;      // Width of sleeper ties
     const sleeperSpacing = 8;     // Distance between sleepers
-    const railColor = '#444';     // Dark gray rails
-    const sleeperColor = '#8b7355'; // Brown sleepers
-    const middleColor = '#6b5344';  // Darker brown for middle
+    const railColor = '#333';     // Dark gray rails
+    const sleeperColor = '#aa8844'; // Brown sleepers (lighter for visibility)
+    const middleColor = '#daa520';  // Golden middle section for contrast
 
     // Draw sleepers first (behind the rails)
     this.ctx.fillStyle = sleeperColor;
@@ -575,17 +575,17 @@ class Renderer {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body (dark red/maroon for locomotive)
-    this.ctx.fillStyle = '#cc3333';
+    // Main body (bright red for locomotive)
+    this.ctx.fillStyle = '#ff3333';
     this.ctx.fillRect(-width / 2, -height / 2, width, height);
 
-    // Small front detail (lighter color to show front direction)
-    this.ctx.fillStyle = '#ff6666';
-    this.ctx.fillRect(-width / 2 + 2, -height / 2 + 2, width - 4, 6);
+    // Front indicator (yellow stripe to show direction)
+    this.ctx.fillStyle = '#ffff00';
+    this.ctx.fillRect(-width / 2, -height / 2, 8, height);
 
-    // Border outline
-    this.ctx.strokeStyle = '#660000';
-    this.ctx.lineWidth = 1;
+    // Border outline (dark)
+    this.ctx.strokeStyle = '#000000';
+    this.ctx.lineWidth = 2;
     this.ctx.strokeRect(-width / 2, -height / 2, width, height);
 
     this.ctx.restore();
@@ -611,13 +611,13 @@ class Renderer {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body (dark blue/gray for cargo cars)
-    this.ctx.fillStyle = '#4444aa';
+    // Main body (bright blue for cargo cars)
+    this.ctx.fillStyle = '#3366ff';
     this.ctx.fillRect(-width / 2, -height / 2, width, height);
 
-    // Simple border outline
-    this.ctx.strokeStyle = '#222255';
-    this.ctx.lineWidth = 1;
+    // Border outline (dark)
+    this.ctx.strokeStyle = '#000000';
+    this.ctx.lineWidth = 2;
     this.ctx.strokeRect(-width / 2, -height / 2, width, height);
 
     this.ctx.restore();
