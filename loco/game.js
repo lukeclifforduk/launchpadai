@@ -38,24 +38,36 @@ const CONFIG = {
   // Train system parameters
   train: {
     speed: 200,             // Pixels per second (full loop ~25 seconds)
-    locoWidth: 64,          // Locomotive width (increased for visibility)
-    locoHeight: 40,         // Locomotive height (increased for visibility)
-    carriageWidth: 56,      // Carriage width (increased for visibility)
-    carriageHeight: 36,     // Carriage height (increased for visibility)
+    locoWidth: 32,          // Locomotive width (pixel art)
+    locoHeight: 32,         // Locomotive height (pixel art)
+    carriageWidth: 32,      // Carriage width (pixel art)
+    carriageHeight: 32,     // Carriage height (pixel art)
     carriageCount: 5,       // Number of cargo carriages
-    carriageSpacing: 60     // Distance between carriages (pixels along path)
+    carriageSpacing: 40     // Distance between carriages (pixels along path)
   },
 
-  // Color palette (matches CSS variables)
+  // Color palette - Retro 8-bit arcade aesthetic (12 colors total)
   colors: {
-    grass: '#7cb342',
-    trackLight: '#8b7355',
-    trackDark: '#6b5344',
-    locoBody: '#2a2a2a',
-    locoDarkest: '#1a1a1a',
-    locoAccent: '#ff6600',
-    carriage: '#3a3a3a',
-    carriageDark: '#2a2a2a'
+    // Background & Environment
+    grass: '#2d5016',      // Dark forest green
+    dirt: '#6b4423',       // Brown earth
+    stone: '#a0a0a0',      // Light gray stone
+
+    // Track elements
+    trackLight: '#4a4a4a', // Dark gray rails
+    trackDark: '#2a2a2a',  // Very dark rail shadows
+    sleeper: '#8b6914',    // Golden brown wood
+
+    // Locomotive palette
+    locoBody: '#1a1a1a',   // Pure black body
+    locoGray: '#4a4a4a',   // Dark gray panels
+    locoRed: '#ff3333',    // Bright red accent
+    locoYellow: '#ffff00', // Bright yellow details
+
+    // Carriage palette
+    carriageGray: '#3a3a3a',    // Dark gray body
+    carriageLight: '#707070',   // Light gray panels
+    carriageAccent: '#ff3333'   // Red accent (matches loco)
   }
 };
 
@@ -444,13 +456,55 @@ class Renderer {
   }
 
   /**
-   * Clear canvas with background color
+   * Clear canvas with background color and add scattered textures
    */
   clear() {
     if (!this.ctx) return;
 
+    // Fill background with grass color
     this.ctx.fillStyle = this.config.colors.grass;
     this.ctx.fillRect(0, 0, this.config.canvas.width, this.config.canvas.height);
+
+    // Add scattered texture elements (static stones/grass tufts)
+    this.addScatteredTextures();
+  }
+
+  /**
+   * Add scattered stone and grass textures for environment detail
+   */
+  addScatteredTextures() {
+    if (!this.ctx) return;
+
+    const stone = this.config.colors.stone;
+    const dirt = this.config.colors.dirt;
+
+    // Pseudo-random texture placement (deterministic seed-based)
+    const textureSpacing = 120;
+    const textureSize = 3;
+
+    for (let x = 0; x < this.config.canvas.width; x += textureSpacing) {
+      for (let y = 0; y < this.config.canvas.height; y += textureSpacing) {
+        // Simple deterministic pseudo-random based on position
+        const seed = (x * 73856093 ^ y * 19349663) & 0xffffffff;
+        const rand = Math.abs(Math.sin(seed) * 10000) % 1;
+
+        if (rand < 0.3) {
+          // Draw small stone clusters
+          this.ctx.fillStyle = stone;
+          const offsetX = x + (seed % 20) - 10;
+          const offsetY = y + ((seed / 20) % 20) - 10;
+          this.ctx.fillRect(offsetX, offsetY, textureSize, textureSize);
+          this.ctx.fillRect(offsetX + 4, offsetY, textureSize, textureSize);
+          this.ctx.fillRect(offsetX + 2, offsetY - 4, textureSize, textureSize);
+        } else if (rand < 0.5) {
+          // Draw dirt patches
+          this.ctx.fillStyle = dirt;
+          const offsetX = x + (seed % 30) - 15;
+          const offsetY = y + ((seed / 30) % 30) - 15;
+          this.ctx.fillRect(offsetX, offsetY, 4, 4);
+        }
+      }
+    }
   }
 
   /**
@@ -473,32 +527,26 @@ class Renderer {
 
   /**
    * Draw track system with two parallel rails and sleepers
-   * More realistic train track design with colored middle section
+   * Retro 8-bit aesthetic with simplified details
    */
   drawStandardTrack(trackSystem) {
     if (!this.ctx) return;
 
     const waypoints = trackSystem.waypoints;
-    const trackWidth = 50;        // Total width between outer rails (increased for visibility)
-    const railWidth = 3;          // Width of each rail line
-    const sleeperWidth = 16;      // Width of sleeper ties
-    const sleeperSpacing = 8;     // Distance between sleepers
-    const railColor = '#333';     // Dark gray rails
-    const sleeperColor = '#aa8844'; // Brown sleepers (lighter for visibility)
-    const middleColor = '#daa520';  // Golden middle section for contrast
+    const trackWidth = 50;        // Total width between outer rails
+    const railWidth = 4;          // Width of each rail line (thicker for retro look)
+    const sleeperWidth = 20;      // Width of sleeper ties
+    const sleeperSpacing = 3;     // Draw more frequently for pattern effect
+    const railColor = this.config.colors.trackLight;     // Dark gray rails
+    const sleeperColor = this.config.colors.sleeper;    // Golden brown sleepers
+    const bedColor = this.config.colors.trackDark;      // Very dark rail bed
 
-    // Draw sleepers first (behind the rails)
+    // Draw sleeper ties first (behind the rails)
     this.ctx.fillStyle = sleeperColor;
-    for (let i = 0; i < waypoints.length; i += 2) {  // Draw every other point for spacing
+    for (let i = 0; i < waypoints.length; i += sleeperSpacing) {
       const waypoint = waypoints[i];
       const angle = waypoint.angle;
       const perpendicular = angle + Math.PI / 2;
-
-      // Sleeper position (perpendicular to track direction)
-      const startX = waypoint.x - Math.cos(perpendicular) * (trackWidth / 2);
-      const startY = waypoint.y - Math.sin(perpendicular) * (trackWidth / 2);
-      const endX = waypoint.x + Math.cos(perpendicular) * (trackWidth / 2);
-      const endY = waypoint.y + Math.sin(perpendicular) * (trackWidth / 2);
 
       // Draw sleeper as a rotated rectangle
       this.ctx.save();
@@ -508,10 +556,10 @@ class Renderer {
       this.ctx.restore();
     }
 
-    // Draw middle section (between the rails)
-    this.ctx.fillStyle = middleColor;
+    // Draw middle bed section (simplified, darker)
+    this.ctx.fillStyle = bedColor;
     this.ctx.beginPath();
-    const innerOffset = (trackWidth / 2) - 8;
+    const innerOffset = (trackWidth / 2) - 12;
     for (let i = 0; i < waypoints.length; i++) {
       const waypoint = waypoints[i];
       const angle = waypoint.angle;
@@ -531,8 +579,8 @@ class Renderer {
     for (let offset of [-trackWidth / 2, trackWidth / 2]) {
       this.ctx.strokeStyle = railColor;
       this.ctx.lineWidth = railWidth;
-      this.ctx.lineCap = 'round';
-      this.ctx.lineJoin = 'round';
+      this.ctx.lineCap = 'butt';
+      this.ctx.lineJoin = 'miter';
       this.ctx.beginPath();
 
       for (let i = 0; i < waypoints.length; i++) {
@@ -556,8 +604,8 @@ class Renderer {
   }
 
   /**
-   * Draw locomotive - SIMPLE TOP-DOWN VIEW
-   * Just a basic rectangle with minimal details
+   * Draw locomotive - Pixel art top-down view
+   * 32x32 sprite with realistic proportions and detail
    *
    * @param {number} x - Center X position
    * @param {number} y - Center Y position
@@ -568,32 +616,57 @@ class Renderer {
   drawLocomotive(x, y, angle, trainConfig, colors) {
     if (!this.ctx) return;
 
-    const width = trainConfig.locoWidth;
-    const height = trainConfig.locoHeight;
+    const size = 32;
+    const half = size / 2;
 
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body (bright red for locomotive)
-    this.ctx.fillStyle = '#ff3333';
-    this.ctx.fillRect(-width / 2, -height / 2, width, height);
+    // Draw pixel art locomotive (32x32 grid)
 
-    // Front indicator (yellow stripe to show direction)
-    this.ctx.fillStyle = '#ffff00';
-    this.ctx.fillRect(-width / 2, -height / 2, 8, height);
+    // Wheels (bottom, visible)
+    this.ctx.fillStyle = colors.locoBody;
+    this.ctx.fillRect(-8, 10, 6, 6);    // Left rear wheel
+    this.ctx.fillRect(2, 10, 6, 6);     // Right rear wheel
 
-    // Border outline (dark)
-    this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(-width / 2, -height / 2, width, height);
+    // Main body - red locomotive
+    this.ctx.fillStyle = colors.locoRed;
+    this.ctx.fillRect(-10, -8, 20, 16); // Main cargo/boiler area
+
+    // Cab area - darker red back section
+    this.ctx.fillStyle = colors.locoBody;
+    this.ctx.fillRect(-10, -8, 5, 16);  // Back wall of cab
+
+    // Smokestack - bright gray cylinder
+    this.ctx.fillStyle = colors.locoGray;
+    this.ctx.fillRect(-3, -12, 6, 4);   // Smokestack pipe
+
+    // Smokestack cap
+    this.ctx.fillStyle = colors.locoBody;
+    this.ctx.fillRect(-4, -14, 8, 2);   // Top ring
+
+    // Windows (yellow headlight at front)
+    this.ctx.fillStyle = colors.locoYellow;
+    this.ctx.fillRect(8, -3, 4, 4);     // Front headlight
+    this.ctx.fillRect(8, 0, 4, 4);      // Front light
+
+    // Connector plate (gray detail)
+    this.ctx.fillStyle = colors.locoGray;
+    this.ctx.fillRect(10, -4, 2, 8);    // Coupling connector
+
+    // Wheel detail outline
+    this.ctx.strokeStyle = colors.locoBody;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(-8, 10, 6, 6);
+    this.ctx.strokeRect(2, 10, 6, 6);
 
     this.ctx.restore();
   }
 
   /**
-   * Draw a cargo carriage - SIMPLE TOP-DOWN VIEW
-   * Just a simple rectangle
+   * Draw a cargo carriage - Pixel art top-down view
+   * 32x32 sprite matching locomotive aesthetic
    *
    * @param {number} x - Center X position
    * @param {number} y - Center Y position
@@ -604,21 +677,41 @@ class Renderer {
   drawCarriage(x, y, angle, trainConfig, colors) {
     if (!this.ctx) return;
 
-    const width = trainConfig.carriageWidth;
-    const height = trainConfig.carriageHeight;
+    const half = 16;
 
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body (bright blue for cargo cars)
-    this.ctx.fillStyle = '#3366ff';
-    this.ctx.fillRect(-width / 2, -height / 2, width, height);
+    // Draw pixel art carriage (32x32 grid)
 
-    // Border outline (dark)
-    this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(-width / 2, -height / 2, width, height);
+    // Wheels (bottom, visible)
+    this.ctx.fillStyle = colors.locoBody;
+    this.ctx.fillRect(-8, 10, 6, 6);    // Left wheel
+    this.ctx.fillRect(2, 10, 6, 6);     // Right wheel
+
+    // Main cargo body - dark gray
+    this.ctx.fillStyle = colors.carriageGray;
+    this.ctx.fillRect(-10, -8, 20, 16); // Main box
+
+    // Side panels - lighter gray stripes for detail
+    this.ctx.fillStyle = colors.carriageLight;
+    this.ctx.fillRect(-10, -6, 2, 12);  // Left panel stripe
+    this.ctx.fillRect(8, -6, 2, 12);    // Right panel stripe
+
+    // Top panel detail
+    this.ctx.fillStyle = colors.carriageGray;
+    this.ctx.fillRect(-8, -8, 16, 2);   // Top edge
+
+    // Connector area (front)
+    this.ctx.fillStyle = colors.locoGray;
+    this.ctx.fillRect(10, -4, 2, 8);    // Coupling connector
+
+    // Wheel detail outline
+    this.ctx.strokeStyle = colors.locoBody;
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(-8, 10, 6, 6);
+    this.ctx.strokeRect(2, 10, 6, 6);
 
     this.ctx.restore();
   }
