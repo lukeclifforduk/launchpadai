@@ -630,8 +630,24 @@
         lastStationDist: 0,
         carriages: Array.from({ length: CARRIAGE_COUNT }, () => ({ ore: 0.0 }))
       },
-      craneA: { ore: 0.0 },
-      craneB: { ore: 0.0 },
+      craneA: {
+        ore: 0.0,
+        state: 'IDLE',           // IDLE, RECEIVING, STAGING, READY, TRANSFERRING, EMPTY
+        capacity: 50,             // Max ore the crane can hold
+        transferRate: 3,          // Units per second from truck
+        readyThreshold: 15,       // Min ore to broadcast READY
+        stagedTime: 0,            // Time ore has been in staging
+        maxStageTime: 5           // Broadcast READY after this time
+      },
+      craneB: {
+        ore: 0.0,
+        state: 'IDLE',
+        capacity: 50,
+        transferRate: 3,
+        readyThreshold: 15,
+        stagedTime: 0,
+        maxStageTime: 5
+      },
       quarryA: new Float32Array(480),  // 60 cols * 8 rows
       quarryB: new Float32Array(480),  // 60 cols * 8 rows
       quarryAFlash: 0,  // Flash timer for quarry A
@@ -802,32 +818,30 @@
 
     /* ===== CRANE OPERATIONS ===== */
     function updateCranes(dt) {
-      if (state.train.phase !== 'DOCKED') return;
-
-      const RATE = 2.0;
-      const delta = RATE * dt;
       const train = state.train;
 
       if (train.atStation === 'A') {
-        // Load: craneA → carriages
+        // At station A: load craneA ore into train
+        transferCraneToTrain(state.craneA, train, dt);
+      } else if (train.atStation === 'B') {
+        // At station B: unload train carriages into craneB
+        const UNLOAD_RATE = 4.0;
+        const delta = UNLOAD_RATE * dt;
+
         for (let i = 0; i < CARRIAGE_COUNT; i++) {
-          if (state.craneA.ore <= 0) break;
-          const space = CARRIAGE_CAPACITY - train.carriages[i].ore;
-          const xfer = Math.min(space, state.craneA.ore, delta);
-          train.carriages[i].ore += xfer;
-          state.craneA.ore -= xfer;
-        }
-      } else {
-        // Unload: carriages → craneB
-        for (let i = CARRIAGE_COUNT - 1; i >= 0; i--) {
           if (train.carriages[i].ore <= 0) break;
-          const space = CARRIAGE_CAPACITY * CARRIAGE_COUNT - state.craneB.ore;
+          const space = state.craneB.capacity - state.craneB.ore;
           const xfer = Math.min(train.carriages[i].ore, space, delta);
           train.carriages[i].ore -= xfer;
           state.craneB.ore += xfer;
           state.stats.oreMoved += xfer;
         }
+        updateCraneState(state.craneB, dt);
       }
+
+      // Always update crane states for visual feedback
+      updateCraneState(state.craneA, dt);
+      updateCraneState(state.craneB, dt);
     }
 
     /* ===== QUARRY HELPERS ===== */
@@ -1028,14 +1042,13 @@
       truck.bobbleTime += dt;
 
       if (truck.waitTimer <= 0) {
-        if (truck.side === 'A') {
-          state.craneA.ore += truck.ore;
-        } else {
-          state.craneB.ore += truck.ore;
+        const crane = truck.side === 'A' ? state.craneA : state.craneB;
+        transferTruckToCrane(truck, crane, dt);
+
+        if (truck.ore <= 0) {
+          truck.phase = 'IDLE';
+          truck.bobbleTime = 0;
         }
-        truck.ore = 0;
-        truck.phase = 'IDLE';
-        truck.bobbleTime = 0;
       }
 
       const pos = roadPosAtDist(road, truck.roadDist);
@@ -1114,6 +1127,88 @@
       }
 
       return BehaviorStatus.RUNNING;
+    }
+
+    /* ===== CRANE STATE MANAGEMENT ===== */
+
+    /**
+     * Check if crane can receive ore from a truck
+     */
+    function canCraneReceiveTruck(crane) {
+      return crane.state !== 'EMPTY' && crane.ore < crane.capacity;
+    }
+
+    /**
+     * Check if crane has enough ore to signal train
+     */
+    function craneReadyToLoadTrain(crane) {
+      return crane.state === 'READY' && crane.ore >= 1;
+    }
+
+    /**
+     * Update crane state machine based on ore levels and time
+     */
+    function updateCraneState(crane, dt) {
+      crane.stagedTime += dt;
+
+      // State transitions
+      if (crane.ore <= 0) {
+        crane.state = 'EMPTY';
+      } else if (crane.state === 'IDLE' && crane.ore > 0) {
+        crane.state = 'RECEIVING';
+      } else if (crane.state === 'RECEIVING' && crane.ore >= crane.readyThreshold) {
+        crane.state = 'STAGING';
+        crane.stagedTime = 0;
+      } else if (crane.state === 'STAGING' && crane.ore >= crane.readyThreshold && crane.stagedTime >= 0.5) {
+        crane.state = 'READY';
+      }
+
+      // Reset staging time when ore decreases
+      if (crane.ore < crane.readyThreshold) {
+        crane.state = 'RECEIVING';
+        crane.stagedTime = 0;
+      }
+    }
+
+    /**
+     * Transfer ore from truck to crane
+     */
+    function transferTruckToCrane(truck, crane, dt) {
+      if (!canCraneReceiveTruck(crane) || truck.ore <= 0) {
+        return;
+      }
+
+      const delta = crane.transferRate * dt;
+      const space = crane.capacity - crane.ore;
+      const xfer = Math.min(truck.ore, space, delta);
+
+      truck.ore -= xfer;
+      crane.ore += xfer;
+      updateCraneState(crane, dt);
+    }
+
+    /**
+     * Transfer ore from crane to train carriages
+     */
+    function transferCraneToTrain(crane, train, dt) {
+      if (crane.ore <= 0 || train.phase !== 'DOCKED') {
+        return;
+      }
+
+      const TRANSFER_RATE = 4.0; // Units per second
+      const delta = TRANSFER_RATE * dt;
+
+      // Fill carriages in order
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        if (crane.ore <= 0) break;
+        const space = CARRIAGE_CAPACITY - train.carriages[i].ore;
+        const xfer = Math.min(space, crane.ore, delta);
+        train.carriages[i].ore += xfer;
+        crane.ore -= xfer;
+      }
+
+      state.stats.oreMoved += delta; // Track total moved
+      updateCraneState(crane, dt);
     }
 
     /* ===== TRUCK MOVEMENT ===== */
@@ -1378,10 +1473,19 @@
 
     function drawCrane(side) {
       const crane = (side === 'A') ? CRANE_A : CRANE_B;
+      const craneState = (side === 'A') ? state.craneA : state.craneB;
       const y = crane.baseY;
 
-      // Legs - rust red
-      ctx.strokeStyle = '#c9584c';
+      // State-based color for visual feedback
+      let stateColor = '#c9584c'; // Default: rust red
+      if (craneState.state === 'RECEIVING') stateColor = '#d4a835'; // Yellow
+      if (craneState.state === 'STAGING') stateColor = '#d4a835';   // Yellow
+      if (craneState.state === 'READY') stateColor = '#5da857';     // Green
+      if (craneState.state === 'TRANSFERRING') stateColor = '#c97a3a'; // Orange
+      if (craneState.state === 'EMPTY') stateColor = '#8a6b52';     // Dull tan
+
+      // Legs - colored by state
+      ctx.strokeStyle = stateColor;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
@@ -1393,16 +1497,16 @@
       ctx.lineTo(crane.x + 15, y + 40);
       ctx.stroke();
 
-      // Beam - rust red
-      ctx.strokeStyle = '#c9584c';
+      // Beam - colored by state
+      ctx.strokeStyle = stateColor;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
       ctx.lineTo(crane.x + 15, y);
       ctx.stroke();
 
-      // Trolley - warm orange-brown
-      const trolleyX = crane.x - 10 + ((side === 'A') ? state.craneA.ore : state.craneB.ore) * 2;
+      // Trolley position based on ore amount
+      const trolleyX = crane.x - 10 + craneState.ore * 2;
       ctx.fillStyle = '#d4854c';
       ctx.fillRect(trolleyX - 8, y - 4, 16, 8);
 
@@ -1414,12 +1518,20 @@
       ctx.lineTo(trolleyX, y + 20);
       ctx.stroke();
 
-      // Stacked ore - brown/tan ore colors
+      // Stacked ore - brown/tan ore colors with height based on capacity
       ctx.fillStyle = '#a87852';
-      const oreCount = Math.floor((side === 'A') ? state.craneA.ore : state.craneB.ore);
-      for (let i = 0; i < oreCount && i < 8; i++) {
+      const oreCount = Math.floor(craneState.ore);
+      const maxVisualStacks = 8;
+      for (let i = 0; i < oreCount && i < maxVisualStacks; i++) {
         ctx.fillRect(trolleyX - 6, y + 20 + i * 3, 12, 3);
       }
+
+      // State indicator text below crane (small)
+      ctx.fillStyle = '#3d2817';
+      ctx.font = '9px "Courier New"';
+      ctx.textAlign = 'center';
+      const stateText = craneState.ore.toFixed(0) + 'u';
+      ctx.fillText(stateText, crane.x, y + 65);
     }
 
     function drawLocomotive() {
