@@ -733,47 +733,8 @@
 
     /* ===== TRAIN MOVEMENT ===== */
     function updateTrain(dt) {
-      const train = state.train;
-
-      if (train.phase === 'DOCKED') {
-        train.dwellTimer -= dt;
-        if (train.dwellTimer <= 0) {
-          train.phase = 'ACCEL';
-          train.dwellTimer = 0;
-        }
-        return;
-      }
-
-      train.dist = wrapDist(train.dist + train.speed * dt);
-
-      const nextStDist = (train.atStation === 'A') ? STATION_B_DIST : STATION_A_DIST;
-      const distFromLast = wrapDist(train.dist - train.lastStationDist);
-      const distToNext = wrapDist(nextStDist - train.dist);
-
-      if (train.phase === 'ACCEL') {
-        const t = Math.min(distFromLast / ACCEL_DIST, 1);
-        train.speed = CRUISE_SPEED * t;
-        if (t >= 1) train.phase = 'CRUISE';
-      }
-
-      if (train.phase === 'CRUISE') {
-        train.speed = CRUISE_SPEED;
-        if (distToNext <= ACCEL_DIST) train.phase = 'DECEL';
-      }
-
-      if (train.phase === 'DECEL') {
-        const t = Math.max(distToNext / ACCEL_DIST, 0);
-        train.speed = CRUISE_SPEED * t;
-        if (distToNext <= 6) {
-          train.dist = nextStDist;
-          train.speed = 0;
-          train.phase = 'DOCKED';
-          train.dwellTimer = DWELL_TIME;
-          train.lastStation = train.atStation;
-          train.atStation = (train.atStation === 'A') ? 'B' : 'A';
-          train.lastStationDist = nextStDist;
-        }
-      }
+      // Execute behavior tree for train
+      state.train.behaviorTree.tick(state.train, dt);
     }
 
     /* ===== CRANE OPERATIONS ===== */
@@ -849,6 +810,178 @@
       return amount - remaining;
     }
 
+    /* ===== TRUCK BEHAVIOR ACTION HANDLERS ===== */
+    // These functions are called by the behavior tree during truck updates
+
+    function updateTruckToQuarry(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      const roadLen = roadLength(road);
+      const PULLOVER_DIST = 350;
+
+      // Advanced collision avoidance
+      let trucksAhead = 0;
+      let closestDist = Infinity;
+      for (const other of state.trucks) {
+        if (other === truck || other.side !== truck.side) continue;
+        const dist = other.roadDist - truck.roadDist;
+        if ((other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') && dist > 0) {
+          trucksAhead++;
+          closestDist = Math.min(closestDist, dist);
+        }
+      }
+
+      const safeDistance = 80 + (trucksAhead * 20);
+
+      if (closestDist < safeDistance && closestDist !== Infinity) {
+        truck.phase = 'AT_PULLOVER';
+        truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
+        truck.waitTimer = 0;
+      } else {
+        truck.roadDist += TRUCK_SPEED * dt;
+        if (truck.roadDist >= PULLOVER_DIST) {
+          truck.roadDist = PULLOVER_DIST;
+          truck.phase = 'AT_QUARRY';
+          truck.waitTimer = 1.5;
+        }
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtQuarry(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.waitTimer -= dt;
+      truck.bobbleTime += dt;
+
+      if (truck.waitTimer <= 0) {
+        const removed = removeOreFromQuarry(
+          truck.side === 'A' ? state.quarryA : state.quarryB,
+          2.0
+        );
+        truck.ore = removed;
+        truck.phase = 'TO_CRANE';
+        truck.bobbleTime = 0;
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckToCrane(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.roadDist -= TRUCK_SPEED * dt;
+
+      if (truck.roadDist <= 0) {
+        truck.roadDist = 0;
+        truck.phase = 'AT_CRANE';
+        truck.waitTimer = 1.0;
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtCrane(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.waitTimer -= dt;
+      truck.bobbleTime += dt;
+
+      if (truck.waitTimer <= 0) {
+        if (truck.side === 'A') {
+          state.craneA.ore += truck.ore;
+        } else {
+          state.craneB.ore += truck.ore;
+        }
+        truck.ore = 0;
+        truck.phase = 'IDLE';
+        truck.bobbleTime = 0;
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtPullover(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+
+      let quarryOccupied = false;
+      for (const other of state.trucks) {
+        if (other === truck || other.side !== truck.side) continue;
+        if (other.phase === 'AT_QUARRY') {
+          quarryOccupied = true;
+          break;
+        }
+      }
+
+      if (!quarryOccupied) {
+        truck.phase = 'TO_QUARRY';
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    /* ===== TRAIN BEHAVIOR ACTION HANDLERS ===== */
+
+    function canTrainDispatch() {
+      const train = state.train;
+      return train.phase === 'DOCKED' && train.dwellTimer <= 0;
+    }
+
+    function updateTrainMovement(train, dt) {
+      if (train.phase === 'DOCKED') {
+        train.dwellTimer -= dt;
+        if (train.dwellTimer <= 0) {
+          train.phase = 'ACCEL';
+        }
+        return BehaviorStatus.RUNNING;
+      }
+
+      train.dist = wrapDist(train.dist + train.speed * dt);
+
+      const nextStDist = (train.atStation === 'A') ? STATION_B_DIST : STATION_A_DIST;
+      const distFromLast = wrapDist(train.dist - train.lastStationDist);
+      const distToNext = wrapDist(nextStDist - train.dist);
+
+      if (train.phase === 'ACCEL') {
+        const t = Math.min(distFromLast / ACCEL_DIST, 1);
+        train.speed = CRUISE_SPEED * t;
+        if (t >= 1) train.phase = 'CRUISE';
+      }
+
+      if (train.phase === 'CRUISE') {
+        train.speed = CRUISE_SPEED;
+        if (distToNext <= ACCEL_DIST) train.phase = 'DECEL';
+      }
+
+      if (train.phase === 'DECEL') {
+        const t = Math.max(distToNext / ACCEL_DIST, 0);
+        train.speed = CRUISE_SPEED * t;
+        if (distToNext <= 6) {
+          train.dist = nextStDist;
+          train.speed = 0;
+          train.phase = 'DOCKED';
+          train.dwellTimer = DWELL_TIME;
+          train.lastStation = train.atStation;
+          train.atStation = (train.atStation === 'A') ? 'B' : 'A';
+          train.lastStationDist = nextStDist;
+        }
+      }
+
+      return BehaviorStatus.RUNNING;
+    }
+
     /* ===== TRUCK MOVEMENT ===== */
     function roadLength(road) {
       let len = 0;
@@ -883,123 +1016,9 @@
     }
 
     function updateTrucks(dt) {
-      const LOAD_TIME = 1.5;
-      const DEPOSIT_TIME = 1.0;
-      const PULLOVER_DIST = 350;  // Distance from end where pullover area starts
-
       for (const truck of state.trucks) {
-        const road = (truck.side === 'A') ? ROAD_A : ROAD_B;
-        const roadLen = roadLength(road);
-
-        // Update bobble timer for animation
-        if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
-          truck.bobbleTime += dt;
-        }
-
-        if (truck.phase === 'IDLE') {
-          // Determine next phase based on reversal state and which side truck is on
-          if (!state.isReversed && truck.side === 'A') {
-            truck.phase = 'TO_QUARRY';
-            // roadDist stays at current position (station), will naturally move toward quarry
-          } else if (state.isReversed && truck.side === 'B') {
-            truck.phase = 'TO_QUARRY';
-            // roadDist stays at current position (station), will naturally move toward quarry
-          } else if (!state.isReversed && truck.side === 'B') {
-            truck.phase = 'TO_CRANE';
-            // roadDist stays at current position, will naturally move toward station
-          } else if (state.isReversed && truck.side === 'A') {
-            truck.phase = 'TO_CRANE';
-            // roadDist stays at current position, will naturally move toward station
-          }
-          continue;
-        }
-
-        if (truck.phase === 'TO_QUARRY') {
-          // Advanced collision avoidance: count trucks ahead and maintain safe distance
-          let trucksAhead = 0;
-          let closestDist = Infinity;
-
-          for (const other of state.trucks) {
-            if (other === truck || other.side !== truck.side) continue;
-            const dist = other.roadDist - truck.roadDist;
-
-            // Count trucks in quarry or approaching
-            if ((other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') && dist > 0) {
-              trucksAhead++;
-              closestDist = Math.min(closestDist, dist);
-            }
-          }
-
-          // Adaptive spacing: increase spacing if multiple trucks ahead
-          const safeDistance = 80 + (trucksAhead * 20);
-
-          if (closestDist < safeDistance && closestDist !== Infinity) {
-            // Truck ahead too close, go to pullover
-            truck.phase = 'AT_PULLOVER';
-            truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
-            truck.waitTimer = 0;
-          } else {
-            // Safe to proceed
-            truck.roadDist += TRUCK_SPEED * dt;
-            if (truck.roadDist >= PULLOVER_DIST) {
-              truck.roadDist = PULLOVER_DIST;
-              truck.phase = 'AT_QUARRY';
-              truck.waitTimer = LOAD_TIME;
-            }
-          }
-        } else if (truck.phase === 'AT_PULLOVER') {
-          // Smart pullover: wait if any truck on same side is at quarry
-          let quarryOccupied = false;
-          for (const other of state.trucks) {
-            if (other === truck || other.side !== truck.side) continue;
-            if (other.phase === 'AT_QUARRY') {
-              quarryOccupied = true;
-              break;
-            }
-          }
-
-          if (!quarryOccupied) {
-            // Quarry is free, resume to quarry
-            truck.phase = 'TO_QUARRY';
-            // Don't reset roadDist - continue from where pullover started
-          }
-        } else if (truck.phase === 'AT_QUARRY') {
-          truck.waitTimer -= dt;
-          if (truck.waitTimer <= 0) {
-            const removed = removeOreFromQuarry(
-              (truck.side === 'A') ? state.quarryA : state.quarryB,
-              2.0
-            );
-            truck.ore = removed;
-            truck.phase = 'TO_CRANE';
-            // Don't snap to roadLen; truck will naturally move backward from current position
-            truck.bobbleTime = 0;
-          }
-        } else if (truck.phase === 'TO_CRANE') {
-          truck.roadDist -= TRUCK_SPEED * dt;
-          if (truck.roadDist <= 0) {
-            truck.roadDist = 0;
-            truck.phase = 'AT_CRANE';
-            truck.waitTimer = DEPOSIT_TIME;
-          }
-        } else if (truck.phase === 'AT_CRANE') {
-          truck.waitTimer -= dt;
-          if (truck.waitTimer <= 0) {
-            if (truck.side === 'A') {
-              state.craneA.ore += truck.ore;
-            } else {
-              state.craneB.ore += truck.ore;
-            }
-            truck.ore = 0;
-            truck.phase = 'IDLE';
-            truck.bobbleTime = 0;
-          }
-        }
-
-        // Update position
-        const pos = roadPosAtDist(road, truck.roadDist);
-        truck.x = pos.x;
-        truck.y = pos.y;
+        // Execute behavior tree for each truck
+        truck.behaviorTree.tick(truck, dt);
       }
     }
 
