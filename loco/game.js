@@ -462,77 +462,102 @@ class Renderer {
   }
 
   /**
-   * Draw the track (double rails)
+   * Draw the track (two parallel rails with sleepers and middle section)
    *
    * @param {TrackSystem} trackSystem - The track to draw
    */
   drawTrack(trackSystem) {
     if (!this.ctx) return;
-
-    // Draw outer rail
-    this.drawTrackRail(trackSystem, 0, this.config.colors.trackLight);
-
-    // Draw inner rail (offset inward)
-    this.drawTrackRail(
-      trackSystem,
-      this.config.track.railGap,
-      this.config.colors.trackDark
-    );
+    this.drawStandardTrack(trackSystem);
   }
 
   /**
-   * Draw a single rail line
-   *
-   * @param {TrackSystem} trackSystem - Track for waypoint data
-   * @param {number} offset - Offset inward from main track
-   * @param {string} color - Rail color
+   * Draw track system with two parallel rails and sleepers
+   * More realistic train track design with colored middle section
    */
-  drawTrackRail(trackSystem, offset, color) {
+  drawStandardTrack(trackSystem) {
     if (!this.ctx) return;
 
     const waypoints = trackSystem.waypoints;
-    const railWidth = this.config.track.railWidth;
+    const trackWidth = 30;        // Total width between outer rails
+    const railWidth = 2;          // Width of each rail line
+    const sleeperWidth = 12;      // Width of sleeper ties
+    const sleeperSpacing = 8;     // Distance between sleepers
+    const railColor = '#444';     // Dark gray rails
+    const sleeperColor = '#8b7355'; // Brown sleepers
+    const middleColor = '#6b5344';  // Darker brown for middle
 
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = railWidth;
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'round';
-
-    this.ctx.beginPath();
-
-    // Draw lines connecting waypoints
-    for (let i = 0; i < waypoints.length; i++) {
+    // Draw sleepers first (behind the rails)
+    this.ctx.fillStyle = sleeperColor;
+    for (let i = 0; i < waypoints.length; i += 2) {  // Draw every other point for spacing
       const waypoint = waypoints[i];
-
-      // Calculate perpendicular offset (inward toward track center)
       const angle = waypoint.angle;
-      const perpendicular = angle + Math.PI / 2;  // 90 degrees clockwise
-      const offsetX = Math.cos(perpendicular) * offset;
-      const offsetY = Math.sin(perpendicular) * offset;
+      const perpendicular = angle + Math.PI / 2;
 
-      const x = waypoint.x + offsetX;
-      const y = waypoint.y + offsetY;
+      // Sleeper position (perpendicular to track direction)
+      const startX = waypoint.x - Math.cos(perpendicular) * (trackWidth / 2);
+      const startY = waypoint.y - Math.sin(perpendicular) * (trackWidth / 2);
+      const endX = waypoint.x + Math.cos(perpendicular) * (trackWidth / 2);
+      const endY = waypoint.y + Math.sin(perpendicular) * (trackWidth / 2);
 
-      if (i === 0) {
-        this.ctx.moveTo(x, y);
-      } else {
-        this.ctx.lineTo(x, y);
-      }
+      // Draw sleeper as a rotated rectangle
+      this.ctx.save();
+      this.ctx.translate(waypoint.x, waypoint.y);
+      this.ctx.rotate(perpendicular);
+      this.ctx.fillRect(-trackWidth / 2, -sleeperWidth / 2, trackWidth, sleeperWidth);
+      this.ctx.restore();
     }
 
-    // Close the path (connect last to first)
-    const firstWaypoint = waypoints[0];
-    const firstAngle = firstWaypoint.angle;
-    const firstPerpendicular = firstAngle + Math.PI / 2;
-    const firstOffsetX = Math.cos(firstPerpendicular) * offset;
-    const firstOffsetY = Math.sin(firstPerpendicular) * offset;
-    this.ctx.lineTo(firstWaypoint.x + firstOffsetX, firstWaypoint.y + firstOffsetY);
+    // Draw middle section (between the rails)
+    this.ctx.fillStyle = middleColor;
+    this.ctx.beginPath();
+    const innerOffset = (trackWidth / 2) - 8;
+    for (let i = 0; i < waypoints.length; i++) {
+      const waypoint = waypoints[i];
+      const angle = waypoint.angle;
+      const perpendicular = angle + Math.PI / 2;
+      const offsetX = Math.cos(perpendicular) * innerOffset;
+      const offsetY = Math.sin(perpendicular) * innerOffset;
+      if (i === 0) {
+        this.ctx.moveTo(waypoint.x + offsetX, waypoint.y + offsetY);
+      } else {
+        this.ctx.lineTo(waypoint.x + offsetX, waypoint.y + offsetY);
+      }
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
 
-    this.ctx.stroke();
+    // Draw two rails (outer lines)
+    for (let offset of [-trackWidth / 2, trackWidth / 2]) {
+      this.ctx.strokeStyle = railColor;
+      this.ctx.lineWidth = railWidth;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+
+      for (let i = 0; i < waypoints.length; i++) {
+        const waypoint = waypoints[i];
+        const angle = waypoint.angle;
+        const perpendicular = angle + Math.PI / 2;
+        const offsetX = Math.cos(perpendicular) * offset;
+        const offsetY = Math.sin(perpendicular) * offset;
+        const x = waypoint.x + offsetX;
+        const y = waypoint.y + offsetY;
+
+        if (i === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
+      }
+      this.ctx.closePath();
+      this.ctx.stroke();
+    }
   }
 
   /**
-   * Draw locomotive
+   * Draw locomotive - SIMPLE TOP-DOWN VIEW
+   * Just a basic rectangle with minimal details
    *
    * @param {number} x - Center X position
    * @param {number} y - Center Y position
@@ -550,41 +575,16 @@ class Renderer {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body (dark)
-    this.ctx.fillStyle = colors.locoBody;
+    // Main body (dark red/maroon for locomotive)
+    this.ctx.fillStyle = '#cc3333';
     this.ctx.fillRect(-width / 2, -height / 2, width, height);
 
-    // Smokestack (top-left, dark)
-    this.ctx.fillStyle = colors.locoDarkest;
-    const stackWidth = width * 0.2;
-    const stackHeight = height * 0.4;
-    this.ctx.fillRect(-width / 2 + 4, -height / 2 - stackHeight + 4, stackWidth, stackHeight);
+    // Small front detail (lighter color to show front direction)
+    this.ctx.fillStyle = '#ff6666';
+    this.ctx.fillRect(-width / 2 + 2, -height / 2 + 2, width - 4, 6);
 
-    // Cabin (back section, slightly darker)
-    this.ctx.fillStyle = colors.locoDarkest;
-    const cabinWidth = width * 0.3;
-    const cabinHeight = height * 0.5;
-    this.ctx.fillRect(width / 2 - cabinWidth - 4, -cabinHeight / 2, cabinWidth, cabinHeight);
-
-    // Windows/accent (orange details)
-    this.ctx.fillStyle = colors.locoAccent;
-    const windowSize = 6;
-    this.ctx.fillRect(-4, -8, windowSize, windowSize);      // Front window
-    this.ctx.fillRect(width / 2 - 12, -6, windowSize, 4);   // Cabin window
-
-    // Wheels (dark circles at bottom)
-    this.ctx.fillStyle = colors.locoDarkest;
-    const wheelRadius = 4;
-    const wheelY = height / 2 + 2;
-    this.ctx.beginPath();
-    this.ctx.arc(-width / 3, wheelY, wheelRadius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.beginPath();
-    this.ctx.arc(width / 3, wheelY, wheelRadius, 0, Math.PI * 2);
-    this.ctx.fill();
-
-    // Border (subtle outline)
-    this.ctx.strokeStyle = colors.locoDarkest;
+    // Border outline
+    this.ctx.strokeStyle = '#660000';
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(-width / 2, -height / 2, width, height);
 
@@ -592,7 +592,8 @@ class Renderer {
   }
 
   /**
-   * Draw a cargo carriage
+   * Draw a cargo carriage - SIMPLE TOP-DOWN VIEW
+   * Just a simple rectangle
    *
    * @param {number} x - Center X position
    * @param {number} y - Center Y position
@@ -610,30 +611,14 @@ class Renderer {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Main body
-    this.ctx.fillStyle = colors.carriage;
+    // Main body (dark blue/gray for cargo cars)
+    this.ctx.fillStyle = '#4444aa';
     this.ctx.fillRect(-width / 2, -height / 2, width, height);
 
-    // Border (darker)
-    this.ctx.strokeStyle = colors.carriageDark;
-    this.ctx.lineWidth = 1.5;
+    // Simple border outline
+    this.ctx.strokeStyle = '#222255';
+    this.ctx.lineWidth = 1;
     this.ctx.strokeRect(-width / 2, -height / 2, width, height);
-
-    // Small accent detail (side stripe)
-    this.ctx.fillStyle = colors.locoAccent;
-    const stripeHeight = height * 0.3;
-    this.ctx.fillRect(width / 2 - 6, -stripeHeight / 2, 3, stripeHeight);
-
-    // Wheels
-    this.ctx.fillStyle = colors.carriageDark;
-    const wheelRadius = 3;
-    const wheelY = height / 2 + 1;
-    this.ctx.beginPath();
-    this.ctx.arc(-width / 3, wheelY, wheelRadius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.beginPath();
-    this.ctx.arc(width / 3, wheelY, wheelRadius, 0, Math.PI * 2);
-    this.ctx.fill();
 
     this.ctx.restore();
   }
