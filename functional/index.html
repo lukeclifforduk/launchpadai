@@ -471,6 +471,90 @@
       return ((d % PATH_LENGTH) + PATH_LENGTH) % PATH_LENGTH;
     }
 
+    /* ===== BEHAVIOR TREE SYSTEM ===== */
+    const BehaviorStatus = { SUCCESS: 'SUCCESS', FAILURE: 'FAILURE', RUNNING: 'RUNNING' };
+
+    /**
+     * Base behavior node - all tree nodes inherit from this
+     * @class BehaviorNode
+     */
+    class BehaviorNode {
+      tick(entity, dt) {
+        throw new Error('tick() must be implemented by subclass');
+      }
+    }
+
+    /**
+     * Selector: runs children until one returns SUCCESS
+     * Returns FAILURE only if all children fail
+     */
+    class Selector extends BehaviorNode {
+      constructor(children = []) {
+        super();
+        this.children = children;
+      }
+
+      tick(entity, dt) {
+        for (const child of this.children) {
+          const status = child.tick(entity, dt);
+          if (status === BehaviorStatus.SUCCESS || status === BehaviorStatus.RUNNING) {
+            return status;
+          }
+        }
+        return BehaviorStatus.FAILURE;
+      }
+    }
+
+    /**
+     * Sequence: runs children in order until one returns FAILURE
+     * Returns SUCCESS only if all children succeed
+     */
+    class Sequence extends BehaviorNode {
+      constructor(children = []) {
+        super();
+        this.children = children;
+      }
+
+      tick(entity, dt) {
+        for (const child of this.children) {
+          const status = child.tick(entity, dt);
+          if (status !== BehaviorStatus.SUCCESS) {
+            return status;
+          }
+        }
+        return BehaviorStatus.SUCCESS;
+      }
+    }
+
+    /**
+     * Condition node: tests a predicate function
+     * Returns SUCCESS if predicate is true, FAILURE otherwise
+     */
+    class Condition extends BehaviorNode {
+      constructor(predicate) {
+        super();
+        this.predicate = predicate;
+      }
+
+      tick(entity, dt) {
+        return this.predicate(entity, dt) ? BehaviorStatus.SUCCESS : BehaviorStatus.FAILURE;
+      }
+    }
+
+    /**
+     * Action node: performs an action and returns its result
+     */
+    class Action extends BehaviorNode {
+      constructor(action) {
+        super();
+        this.action = action;
+      }
+
+      tick(entity, dt) {
+        return this.action(entity, dt);
+      }
+    }
+
     /* ===== STATE OBJECT ===== */
     const state = {
       train: {
@@ -506,6 +590,100 @@
       state.quarryB[i] = 0 + Math.random() * 1;
     }
 
+    /* ===== BEHAVIOR TREE BUILDERS ===== */
+
+    /**
+     * Build truck behavior tree
+     * Trucks follow: Idle → Quarry (extract ore) → Crane (deposit)
+     */
+    function buildTruckBehaviorTree() {
+      return new Sequence([
+        // Check if truck should be active
+        new Condition((truck, dt) => {
+          // If reversed and on side B, or not reversed and on side A, should go to quarry
+          if ((!state.isReversed && truck.side === 'A') || (state.isReversed && truck.side === 'B')) {
+            return true;
+          }
+          if ((!state.isReversed && truck.side === 'B') || (state.isReversed && truck.side === 'A')) {
+            return true;
+          }
+          return false;
+        }),
+        // Main truck activity
+        new Selector([
+          // If idle, determine phase
+          new Sequence([
+            new Condition((truck) => truck.phase === 'IDLE'),
+            new Action((truck) => {
+              if ((!state.isReversed && truck.side === 'A') || (state.isReversed && truck.side === 'B')) {
+                truck.phase = 'TO_QUARRY';
+              } else {
+                truck.phase = 'TO_CRANE';
+              }
+              return BehaviorStatus.SUCCESS;
+            })
+          ]),
+          // If going to quarry
+          new Sequence([
+            new Condition((truck) => truck.phase === 'TO_QUARRY'),
+            new Action((truck, dt) => updateTruckToQuarry(truck, dt))
+          ]),
+          // If at quarry (loading)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_QUARRY'),
+            new Action((truck, dt) => updateTruckAtQuarry(truck, dt))
+          ]),
+          // If going to crane
+          new Sequence([
+            new Condition((truck) => truck.phase === 'TO_CRANE'),
+            new Action((truck, dt) => updateTruckToCrane(truck, dt))
+          ]),
+          // If at crane (unloading)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_CRANE'),
+            new Action((truck, dt) => updateTruckAtCrane(truck, dt))
+          ]),
+          // If at pullover (waiting)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_PULLOVER'),
+            new Action((truck, dt) => updateTruckAtPullover(truck, dt))
+          ])
+        ])
+      ]);
+    }
+
+    /**
+     * Build train behavior tree
+     * Train follows: Docked (loading) → Depart → Transit → Arrive → Dock
+     */
+    function buildTrainBehaviorTree() {
+      return new Sequence([
+        new Selector([
+          // If docked, check if should depart
+          new Sequence([
+            new Condition((train) => train.phase === 'DOCKED'),
+            new Selector([
+              // Check dispatch conditions
+              new Sequence([
+                new Condition((train) => canTrainDispatch()),
+                new Action((train) => {
+                  train.phase = 'ACCEL';
+                  return BehaviorStatus.SUCCESS;
+                })
+              ]),
+              // Otherwise stay docked
+              new Action((train) => BehaviorStatus.SUCCESS)
+            ])
+          ]),
+          // If in transit, update position
+          new Sequence([
+            new Condition((train) => ['ACCEL', 'CRUISE', 'DECEL'].includes(train.phase)),
+            new Action((train, dt) => updateTrainMovement(train, dt))
+          ])
+        ])
+      ]);
+    }
+
     // Truck colors - warm earthy, retro palette
     const TRUCK_COLORS = [
       '#c9584c',  // rusty red
@@ -516,7 +694,11 @@
       '#8b5e3c'   // tan-brown
     ];
 
-    // Initialize trucks with unique colors
+    // Build behavior trees (shared for all trucks of same type)
+    const truckBehaviorTree = buildTruckBehaviorTree();
+    const trainBehaviorTree = buildTrainBehaviorTree();
+
+    // Initialize trucks with unique colors and behavior trees
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
       state.trucks.push({
         side: 'A',
@@ -527,7 +709,8 @@
         x: ROAD_A[0].x,
         y: ROAD_A[0].y,
         colorIdx: i,
-        bobbleTime: 0
+        bobbleTime: 0,
+        behaviorTree: truckBehaviorTree
       });
     }
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
@@ -540,9 +723,13 @@
         x: ROAD_B[0].x,
         y: ROAD_B[0].y,
         colorIdx: (i + TRUCKS_PER_STATION) % TRUCK_COLORS.length,
-        bobbleTime: 0
+        bobbleTime: 0,
+        behaviorTree: truckBehaviorTree
       });
     }
+
+    // Add behavior tree to train
+    state.train.behaviorTree = trainBehaviorTree;
 
     /* ===== TRAIN MOVEMENT ===== */
     function updateTrain(dt) {
