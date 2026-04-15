@@ -218,6 +218,18 @@
       <div class="section">
         <h3>📊 Metrics</h3>
         <div class="stat-row">
+          <span class="stat-label">Efficiency:</span>
+          <span class="stat-value" id="metricsEfficiency">0.0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Train Load:</span>
+          <span class="stat-value" id="metricsLoadFactor">0%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Extracted:</span>
+          <span class="stat-value" id="metricsExtracted">0</span>
+        </div>
+        <div class="stat-row">
           <span class="stat-label">Ore/min:</span>
           <span class="stat-value" id="metricsOreMoved">0</span>
         </div>
@@ -228,10 +240,6 @@
         <div class="stat-row">
           <span class="stat-label">Time:</span>
           <span class="stat-value" id="metricsTime">0:00</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">Flow:</span>
-          <span class="stat-value" id="metricsFlow">A→B</span>
         </div>
       </div>
     </div>
@@ -667,7 +675,16 @@
       stats: {
         oreMoved: 0.0,
         cycleCount: 0,
-        totalTime: 0.0
+        totalTime: 0.0,
+        oreExtracted: 0.0,     // Total ore extracted from quarries
+        blocksPerSecond: 0.0,  // Efficiency: ore moved per second
+        trainLoadFactor: 0.0,  // Avg cargo / max capacity
+        craneQueueTime: 0.0    // Avg wait time for crane access
+      },
+      progression: {
+        milestonesHit: 0,      // Number of unlocked milestones
+        speedBonus: 1.0,       // Truck speed multiplier
+        capacityBonus: 1.0     // Crane capacity multiplier
       }
     };
 
@@ -1284,6 +1301,59 @@
       }
     }
 
+    /* ===== PROGRESSION & METRICS ===== */
+
+    /**
+     * Calculate and update game metrics
+     */
+    function updateMetrics(dt) {
+      // Track ore extracted (quarry A starts full, B empty)
+      const totA = quarryTotal(state.quarryA);
+      const initialA = MAX_QUARRY_ORE;
+      const currentlyExtracted = initialA - totA;
+      state.stats.oreExtracted = Math.max(state.stats.oreExtracted, currentlyExtracted);
+
+      // Efficiency: blocks moved per second
+      state.stats.blocksPerSecond = state.stats.totalTime > 0 ? state.stats.oreMoved / state.stats.totalTime : 0;
+
+      // Train load factor: average cargo / max capacity
+      let totalCarriage = 0;
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        totalCarriage += state.train.carriages[i].ore;
+      }
+      const maxCapacity = CARRIAGE_COUNT * CARRIAGE_CAPACITY;
+      state.stats.trainLoadFactor = maxCapacity > 0 ? totalCarriage / maxCapacity : 0;
+
+      // Check for progression milestones
+      const milestoneCounts = [100, 250, 500, 750, 1000, 1500, 2000];
+      let nextMilestone = 0;
+      for (let i = 0; i < milestoneCounts.length; i++) {
+        if (state.stats.oreExtracted >= milestoneCounts[i]) {
+          nextMilestone = i + 1;
+        }
+      }
+
+      // Apply progression bonuses
+      if (nextMilestone > state.progression.milestonesHit) {
+        state.progression.milestonesHit = nextMilestone;
+
+        // Unlock bonuses every 2 milestones
+        if (nextMilestone % 2 === 0) {
+          state.progression.speedBonus = 1.0 + (nextMilestone / 2) * 0.1;  // +10% per bonus
+          state.progression.capacityBonus = 1.0 + (nextMilestone / 2) * 0.2; // +20% per bonus
+        }
+      }
+    }
+
+    /**
+     * Check if metrics meet "green" status (>0.7)
+     */
+    function getMetricColor(value) {
+      if (value >= 0.7) return '#5da857';  // Green
+      if (value >= 0.4) return '#d4a835';  // Yellow
+      return '#c97a3a';                     // Orange/red
+    }
+
     /* ===== REVERSAL LOGIC ===== */
     function checkReversal() {
       const totA = quarryTotal(state.quarryA);
@@ -1829,7 +1899,19 @@
       document.getElementById('trucksAStatus').textContent = truckCountA > 0 ? `${truckCountA}/3 busy` : 'idle';
       document.getElementById('trucksBStatus').textContent = truckCountB > 0 ? `${truckCountB}/3 busy` : 'idle';
 
-      // Metrics
+      // Metrics with color coding
+      const efficiency = state.stats.blocksPerSecond;
+      const effColor = getMetricColor(efficiency);
+      document.getElementById('metricsEfficiency').textContent = efficiency.toFixed(2);
+      document.getElementById('metricsEfficiency').style.color = effColor;
+
+      const loadFactor = Math.round(state.stats.trainLoadFactor * 100);
+      const loadColor = getMetricColor(state.stats.trainLoadFactor);
+      document.getElementById('metricsLoadFactor').textContent = `${loadFactor}%`;
+      document.getElementById('metricsLoadFactor').style.color = loadColor;
+
+      document.getElementById('metricsExtracted').textContent = Math.round(state.stats.oreExtracted);
+
       const oreMoved = Math.round(state.stats.oreMoved);
       const throughput = state.stats.totalTime > 0 ? Math.round((oreMoved / state.stats.totalTime) * 60) : 0;
       document.getElementById('metricsOreMoved').textContent = throughput;
@@ -1859,6 +1941,7 @@
       updateTrucks(dt);
       checkReversal();
       updateQuarryFlash(dt);
+      updateMetrics(dt);
 
       render();
 
