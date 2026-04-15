@@ -302,6 +302,20 @@
     const EMPTY_THRESHOLD = 192;   // ~5%
     const FULL_THRESHOLD = 3648;   // ~95%
 
+    // Pullover zones - trucks distribute across these zones while at quarry
+    // Each zone has a distance along the road and max truck capacity
+    const PULLOVER_A_ZONES = [
+      { dist: 80, capacity: 2, label: '1' },    // Zone 1: near quarry entrance
+      { dist: 180, capacity: 2, label: '2' },   // Zone 2: mid-quarry
+      { dist: 280, capacity: 2, label: '3' }    // Zone 3: deep in quarry
+    ];
+
+    const PULLOVER_B_ZONES = [
+      { dist: 80, capacity: 2, label: '1' },
+      { dist: 180, capacity: 2, label: '2' },
+      { dist: 280, capacity: 2, label: '3' }
+    ];
+
     // Road waypoints - Carved naturally through quarries
     // Quarry A spans y: 0-140px, x: 0-1200px (full width)
     // Road A curves left and right through the quarry
@@ -814,7 +828,9 @@
         y: ROAD_A[0].y,
         colorIdx: i,
         bobbleTime: 0,
-        behaviorTree: truckBehaviorTree
+        behaviorTree: truckBehaviorTree,
+        pulloverZoneIdx: -1,       // Current zone index (-1 = none)
+        targetCellIdx: -1          // Ore cell being extracted from
       });
     }
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
@@ -828,7 +844,9 @@
         y: ROAD_B[0].y,
         colorIdx: (i + TRUCKS_PER_STATION) % TRUCK_COLORS.length,
         bobbleTime: 0,
-        behaviorTree: truckBehaviorTree
+        behaviorTree: truckBehaviorTree,
+        pulloverZoneIdx: -1,       // Current zone index (-1 = none)
+        targetCellIdx: -1          // Ore cell being extracted from
       });
     }
 
@@ -971,13 +989,64 @@
       return amount - remaining;
     }
 
+    /* ===== PULLOVER ZONE MANAGEMENT ===== */
+
+    /**
+     * Find best available pullover zone for a truck
+     * Returns zone index with available capacity, or -1 if full
+     */
+    function findBestPulloverZone(truck) {
+      const zones = truck.side === 'A' ? PULLOVER_A_ZONES : PULLOVER_B_ZONES;
+      let bestIdx = -1;
+
+      for (let i = 0; i < zones.length; i++) {
+        const zone = zones[i];
+        // Count trucks already in this zone
+        let occupancy = 0;
+        for (const other of state.trucks) {
+          if (other !== truck && other.side === truck.side && other.pulloverZoneIdx === i) {
+            occupancy++;
+          }
+        }
+
+        if (occupancy < zone.capacity) {
+          // Prefer the closest available zone
+          if (bestIdx === -1 || i < bestIdx) {
+            bestIdx = i;
+            break; // Take first available zone
+          }
+        }
+      }
+
+      return bestIdx;
+    }
+
+    /**
+     * Get pullover zone target distance for a truck
+     */
+    function getPulloverZoneDist(truck, zoneIdx) {
+      const zones = truck.side === 'A' ? PULLOVER_A_ZONES : PULLOVER_B_ZONES;
+      if (zoneIdx < 0 || zoneIdx >= zones.length) return 0;
+      return zones[zoneIdx].dist;
+    }
+
     /* ===== TRUCK BEHAVIOR ACTION HANDLERS ===== */
     // These functions are called by the behavior tree during truck updates
 
     function updateTruckToQuarry(truck, dt) {
       const road = truck.side === 'A' ? ROAD_A : ROAD_B;
       const roadLen = roadLength(road);
-      const PULLOVER_DIST = 350;
+
+      // First time going to quarry? Assign a pullover zone
+      if (truck.pulloverZoneIdx === -1) {
+        truck.pulloverZoneIdx = findBestPulloverZone(truck);
+        if (truck.pulloverZoneIdx === -1) {
+          // No zones available, wait at current position
+          truck.pulloverZoneIdx = 0; // Default to first zone
+        }
+      }
+
+      const targetDist = getPulloverZoneDist(truck, truck.pulloverZoneIdx);
 
       // Advanced collision avoidance
       let trucksAhead = 0;
@@ -995,12 +1064,12 @@
 
       if (closestDist < safeDistance && closestDist !== Infinity) {
         truck.phase = 'AT_PULLOVER';
-        truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
+        truck.pulloverTarget = Math.min(truck.roadDist + 100, targetDist);
         truck.waitTimer = 0;
       } else {
         truck.roadDist += TRUCK_SPEED * dt;
-        if (truck.roadDist >= PULLOVER_DIST) {
-          truck.roadDist = PULLOVER_DIST;
+        if (truck.roadDist >= targetDist) {
+          truck.roadDist = targetDist;
           truck.phase = 'AT_QUARRY';
           truck.waitTimer = 1.5;
         }
@@ -1073,6 +1142,7 @@
         if (truck.ore <= 0) {
           truck.phase = 'IDLE';
           truck.bobbleTime = 0;
+          truck.pulloverZoneIdx = -1; // Reset zone for next trip
         }
       }
 
@@ -1455,8 +1525,43 @@
         ctx.stroke();
       };
 
+      const drawPulloverZones = (road, zones, side) => {
+        // Draw zone markers along road
+        for (let i = 0; i < zones.length; i++) {
+          const zone = zones[i];
+          const pos = roadPosAtDist(road, zone.dist);
+
+          // Zone background - semi-transparent
+          ctx.fillStyle = 'rgba(212, 168, 60, 0.3)';
+          ctx.fillRect(pos.x - 25, pos.y - 20, 50, 40);
+
+          // Zone border
+          ctx.strokeStyle = '#d4a835';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(pos.x - 25, pos.y - 20, 50, 40);
+
+          // Zone label
+          ctx.fillStyle = '#6b4423';
+          ctx.font = '10px "Courier New"';
+          ctx.textAlign = 'center';
+          ctx.fillText(`Z${i + 1}`, pos.x, pos.y - 8);
+
+          // Occupancy indicator
+          let occupancy = 0;
+          for (const truck of state.trucks) {
+            if (truck.side === side && truck.pulloverZoneIdx === i) {
+              occupancy++;
+            }
+          }
+          ctx.fillStyle = occupancy >= zone.capacity ? '#c97a3a' : '#5da857';
+          ctx.fillText(`${occupancy}/${zone.capacity}`, pos.x, pos.y + 8);
+        }
+      };
+
       drawRoad(ROAD_A);
       drawRoad(ROAD_B);
+      drawPulloverZones(ROAD_A, PULLOVER_A_ZONES, 'A');
+      drawPulloverZones(ROAD_B, PULLOVER_B_ZONES, 'B');
     }
 
     function drawQuarries() {
