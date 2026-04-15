@@ -160,7 +160,11 @@
         </div>
         <div class="stat-row">
           <span class="stat-label">Cargo:</span>
-          <span class="stat-value" id="trainCargo">0/40</span>
+          <span class="stat-value" id="trainCargo">0/8</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Status:</span>
+          <span class="stat-value" id="trainStatus">WAITING</span>
         </div>
       </div>
 
@@ -214,6 +218,18 @@
       <div class="section">
         <h3>📊 Metrics</h3>
         <div class="stat-row">
+          <span class="stat-label">Efficiency:</span>
+          <span class="stat-value" id="metricsEfficiency">0.0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Train Load:</span>
+          <span class="stat-value" id="metricsLoadFactor">0%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Extracted:</span>
+          <span class="stat-value" id="metricsExtracted">0</span>
+        </div>
+        <div class="stat-row">
           <span class="stat-label">Ore/min:</span>
           <span class="stat-value" id="metricsOreMoved">0</span>
         </div>
@@ -225,66 +241,155 @@
           <span class="stat-label">Time:</span>
           <span class="stat-value" id="metricsTime">0:00</span>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">Flow:</span>
-          <span class="stat-value" id="metricsFlow">A→B</span>
-        </div>
       </div>
     </div>
   </div>
 
   <script>
+    /**
+     * ========== INDUSTRIAL MINE SIMULATION ==========
+     *
+     * A sophisticated logistics game simulating ore mining and transport.
+     *
+     * CORE SYSTEMS:
+     * 1. BEHAVIOR TREES: AI for trucks and trains using Selector/Sequence patterns
+     * 2. SPATIAL GRID: O(1) proximity queries for ore extraction within radius
+     * 3. STATE MACHINE: Cranes manage IDLE→RECEIVING→STAGING→READY→TRANSFERRING states
+     * 4. MULTI-ORE: Iron/Coal/Gold with different extraction rates and values
+     * 5. SUPPLY CHAIN: Quarry → Truck → Crane → Train → Destination
+     * 6. PROGRESSION: Milestones unlock bonuses as ore is extracted
+     * 7. METRICS: Real-time efficiency tracking with color-coded feedback
+     *
+     * GAME LOOP:
+     * - Update: spatial grid, train, cranes, trucks, metrics
+     * - Physics: movement along roads, state transitions
+     * - Render: canvas drawing and UI sidebar
+     * - UI: update metrics and status indicators
+     *
+     * KEY MECHANICS:
+     * - Trucks extract ore from within 10-cell radius (proximity)
+     * - Cranes batch ore and signal train readiness
+     * - Train auto-dispatches when cargo >= target OR dwell time expires
+     * - Pullover zones prevent traffic gridlock
+     * - Economic metrics show supply chain efficiency
+     *
+     * REFERENCE:
+     * - Behavior trees: http://developers-heaven.net/blog/game-ai-behavior-trees
+     * - Transport Tycoon: classic logistics game inspiration
+     * - Factorio: supply chain mechanics inspiration
+     */
+
     /* ===== CANVAS SETUP ===== */
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 1200;
     canvas.height = 700;
 
-    /* ===== CONSTANTS ===== */
-    const CANVAS_W = 1200, CANVAS_H = 700;
-    const CELL = 20; // terrain tile size (quarry cell)
+    /* ===== CONFIGURATION ===== */
+    const CONFIG = {
+      CANVAS: { width: 1200, height: 700 },
+      CELL_SIZE: 20,
 
-    // Oval track (rounded rectangle) - Middle 60% of canvas
-    // Top 20%: 0-140px (Quarry A: 8 rows × 20px = 160px, but capped at 140)
-    // Middle 60%: 140-560px (Train tracks with stations)
-    // Bottom 20%: 560-700px (Quarry B: 8 rows × 20px = 160px, but capped at 140)
-    const TK = {
-      LEFT: 250,
-      RIGHT: 950,
-      TOP: 160,      // Just below Quarry A
-      BOTTOM: 540,   // Just above Quarry B
-      RADIUS: 80
+      // Track geometry
+      TRACK: {
+        LEFT: 250,
+        RIGHT: 950,
+        TOP: 160,
+        BOTTOM: 540,
+        RADIUS: 80,
+        CRUISE_SPEED: 40.0,
+        ACCEL_DIST: 120
+      },
+
+      // Station positions
+      STATIONS: {
+        A: { x: 600, y: 160 },
+        B: { x: 600, y: 540 }
+      },
+
+      // Quarry dimensions (60×8 cells = 480 cells, ~3840 ore total)
+      QUARRIES: {
+        A: { x: 0, y: 0, cols: 60, rows: 8, cellSize: 20 },
+        B: { x: 0, y: 560, cols: 60, rows: 8, cellSize: 20 },
+        MAX_ORE: 3840,
+        EMPTY_THRESHOLD: 192,  // ~5%
+        FULL_THRESHOLD: 3648   // ~95%
+      },
+
+      // Crane positions
+      CRANES: {
+        A: { x: 600, baseY: 140 },
+        B: { x: 600, baseY: 560 }
+      },
+
+      // Train mechanics
+      TRAIN: {
+        CARRIAGE_COUNT: 2,
+        CARRIAGE_CAPACITY: 4,
+        CARRIAGE_SPACING: 32,
+        DWELL_TIME: 5.0,
+        TARGET_LOAD_CAPACITY: 6,
+        MIN_LOADED_TO_DEPART: 1,
+        URGENT_LOAD_CAPACITY: 4
+      },
+
+      // Truck mechanics
+      TRUCKS: {
+        SPEED: 28,
+        PER_STATION: 4,
+        EXTRACTION_RATE: 2.0
+      },
+
+      // Ore types
+      ORE_TYPES: {
+        IRON: { color: '#8b6f47', extractRate: 0.8, value: 1.0, label: 'Iron' },
+        COAL: { color: '#3a3a3a', extractRate: 0.6, value: 2.0, label: 'Coal' },
+        GOLD: { color: '#d4a835', extractRate: 0.4, value: 5.0, label: 'Gold' }
+      },
+
+      // Pullover zones for truck distribution
+      PULLOVER_ZONES: {
+        A: [
+          { dist: 80, capacity: 2, label: '1' },
+          { dist: 180, capacity: 2, label: '2' },
+          { dist: 280, capacity: 2, label: '3' }
+        ],
+        B: [
+          { dist: 80, capacity: 2, label: '1' },
+          { dist: 180, capacity: 2, label: '2' },
+          { dist: 280, capacity: 2, label: '3' }
+        ]
+      }
     };
 
-    const CRUISE_SPEED = 40.0;  // px/sec (reduced from 52.95 for slower, more visible movement)
-    const ACCEL_DIST = 120;     // px for accel/decel ramp
-
-    // Station locations (pixel coords on track) - Top and bottom middle
-    const STATION_A = { x: 600, y: 160 };   // top of track, on the loop
-    const STATION_B = { x: 600, y: 540 };   // bottom of track, on the loop
-
-    // Quarries (pixel coords + grid size) - Expanded to 60×8 cells (20px per cell)
-    // Top 20%: 0-140px height, 0-1200px width
-    // Bottom 20%: 560-700px height, 0-1200px width
-    const QUARRY_A = { x: 0, y: 0, cols: 60, rows: 8, cellSize: 20 };    // Top, full width
-    const QUARRY_B = { x: 0, y: 560, cols: 60, rows: 8, cellSize: 20 };  // Bottom, full width
-
-    // Cranes - positioned at stations
-    const CRANE_A = { x: 600, baseY: 140 };  // Just above Quarry A
-    const CRANE_B = { x: 600, baseY: 560 };  // Just below train tracks, above Quarry B
-
-    const CARRIAGE_COUNT = 5;
-    const CARRIAGE_CAPACITY = 8;
-    const CARRIAGE_SPACING = 32;  // px center-to-center
-
-    const DWELL_TIME = 9.0;        // seconds
-    const TRUCK_SPEED = 28;        // px/sec (slower for better pacing)
-    const TRUCKS_PER_STATION = 4;  // increased from 3 for more activity
-    const DAY_CYCLE_SECS = 120.0;
-
-    const MAX_QUARRY_ORE = 3840;   // 60×8×8 (expanded from 37×8×8 = 2368)
-    const EMPTY_THRESHOLD = 192;   // ~5%
-    const FULL_THRESHOLD = 3648;   // ~95%
+    // Legacy constant references for backward compatibility
+    const CANVAS_W = CONFIG.CANVAS.width;
+    const CANVAS_H = CONFIG.CANVAS.height;
+    const CELL = CONFIG.CELL_SIZE;
+    const TK = CONFIG.TRACK;
+    const CRUISE_SPEED = CONFIG.TRACK.CRUISE_SPEED;
+    const ACCEL_DIST = CONFIG.TRACK.ACCEL_DIST;
+    const STATION_A = CONFIG.STATIONS.A;
+    const STATION_B = CONFIG.STATIONS.B;
+    const QUARRY_A = CONFIG.QUARRIES.A;
+    const QUARRY_B = CONFIG.QUARRIES.B;
+    const CRANE_A = CONFIG.CRANES.A;
+    const CRANE_B = CONFIG.CRANES.B;
+    const CARRIAGE_COUNT = CONFIG.TRAIN.CARRIAGE_COUNT;
+    const CARRIAGE_CAPACITY = CONFIG.TRAIN.CARRIAGE_CAPACITY;
+    const CARRIAGE_SPACING = CONFIG.TRAIN.CARRIAGE_SPACING;
+    const DWELL_TIME = CONFIG.TRAIN.DWELL_TIME;
+    const TARGET_LOAD_CAPACITY = CONFIG.TRAIN.TARGET_LOAD_CAPACITY;
+    const MIN_LOADED_TO_DEPART = CONFIG.TRAIN.MIN_LOADED_TO_DEPART;
+    const URGENT_LOAD_CAPACITY = CONFIG.TRAIN.URGENT_LOAD_CAPACITY;
+    const TRUCK_SPEED = CONFIG.TRUCKS.SPEED;
+    const TRUCKS_PER_STATION = CONFIG.TRUCKS.PER_STATION;
+    const MAX_QUARRY_ORE = CONFIG.QUARRIES.MAX_ORE;
+    const EMPTY_THRESHOLD = CONFIG.QUARRIES.EMPTY_THRESHOLD;
+    const FULL_THRESHOLD = CONFIG.QUARRIES.FULL_THRESHOLD;
+    const ORE_TYPES = CONFIG.ORE_TYPES;
+    const PULLOVER_A_ZONES = CONFIG.PULLOVER_ZONES.A;
+    const PULLOVER_B_ZONES = CONFIG.PULLOVER_ZONES.B;
 
     // Road waypoints - Carved naturally through quarries
     // Quarry A spans y: 0-140px, x: 0-1200px (full width)
@@ -471,6 +576,153 @@
       return ((d % PATH_LENGTH) + PATH_LENGTH) % PATH_LENGTH;
     }
 
+    /* ===== BEHAVIOR TREE SYSTEM ===== */
+    const BehaviorStatus = { SUCCESS: 'SUCCESS', FAILURE: 'FAILURE', RUNNING: 'RUNNING' };
+
+    /**
+     * Base behavior node - all tree nodes inherit from this
+     * @class BehaviorNode
+     */
+    class BehaviorNode {
+      tick(entity, dt) {
+        throw new Error('tick() must be implemented by subclass');
+      }
+    }
+
+    /**
+     * Selector: runs children until one returns SUCCESS
+     * Returns FAILURE only if all children fail
+     */
+    class Selector extends BehaviorNode {
+      constructor(children = []) {
+        super();
+        this.children = children;
+      }
+
+      tick(entity, dt) {
+        for (const child of this.children) {
+          const status = child.tick(entity, dt);
+          if (status === BehaviorStatus.SUCCESS || status === BehaviorStatus.RUNNING) {
+            return status;
+          }
+        }
+        return BehaviorStatus.FAILURE;
+      }
+    }
+
+    /**
+     * Sequence: runs children in order until one returns FAILURE
+     * Returns SUCCESS only if all children succeed
+     */
+    class Sequence extends BehaviorNode {
+      constructor(children = []) {
+        super();
+        this.children = children;
+      }
+
+      tick(entity, dt) {
+        for (const child of this.children) {
+          const status = child.tick(entity, dt);
+          if (status !== BehaviorStatus.SUCCESS) {
+            return status;
+          }
+        }
+        return BehaviorStatus.SUCCESS;
+      }
+    }
+
+    /**
+     * Condition node: tests a predicate function
+     * Returns SUCCESS if predicate is true, FAILURE otherwise
+     */
+    class Condition extends BehaviorNode {
+      constructor(predicate) {
+        super();
+        this.predicate = predicate;
+      }
+
+      tick(entity, dt) {
+        return this.predicate(entity, dt) ? BehaviorStatus.SUCCESS : BehaviorStatus.FAILURE;
+      }
+    }
+
+    /**
+     * Action node: performs an action and returns its result
+     */
+    class Action extends BehaviorNode {
+      constructor(action) {
+        super();
+        this.action = action;
+      }
+
+      tick(entity, dt) {
+        return this.action(entity, dt);
+      }
+    }
+
+    /* ===== SPATIAL GRID SYSTEM ===== */
+    class SpatialGrid {
+      constructor(cellSize = 40) {
+        this.cellSize = cellSize;
+        this.cellsX = Math.ceil(CANVAS_W / cellSize);
+        this.cellsY = Math.ceil(CANVAS_H / cellSize);
+        this.cells = Array(this.cellsX).fill(null).map(() => Array(this.cellsY).fill(null).map(() => ({
+          trucks: [],
+          ore: []
+        })));
+      }
+
+      getCellCoords(x, y) {
+        const cx = Math.floor(x / this.cellSize);
+        const cy = Math.floor(y / this.cellSize);
+        return {
+          cx: Math.max(0, Math.min(cx, this.cellsX - 1)),
+          cy: Math.max(0, Math.min(cy, this.cellsY - 1))
+        };
+      }
+
+      addTruck(truck) {
+        const { cx, cy } = this.getCellCoords(truck.x, truck.y);
+        if (!this.cells[cx][cy].trucks.includes(truck)) {
+          this.cells[cx][cy].trucks.push(truck);
+        }
+      }
+
+      queryRadius(x, y, radius) {
+        const radiusCells = Math.ceil(radius / this.cellSize);
+        const { cx, cy } = this.getCellCoords(x, y);
+        const nearby = [];
+
+        for (let dx = -radiusCells; dx <= radiusCells; dx++) {
+          for (let dy = -radiusCells; dy <= radiusCells; dy++) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (nx >= 0 && nx < this.cellsX && ny >= 0 && ny < this.cellsY) {
+              nearby.push(...this.cells[nx][ny].trucks);
+            }
+          }
+        }
+
+        return nearby;
+      }
+
+      update(trucks) {
+        // Clear and rebuild grid
+        for (let x = 0; x < this.cellsX; x++) {
+          for (let y = 0; y < this.cellsY; y++) {
+            this.cells[x][y].trucks = [];
+          }
+        }
+
+        // Add all trucks to grid
+        for (const truck of trucks) {
+          this.addTruck(truck);
+        }
+      }
+    }
+
+    const spatialGrid = new SpatialGrid(40);
+
     /* ===== STATE OBJECT ===== */
     const state = {
       train: {
@@ -483,10 +735,34 @@
         lastStationDist: 0,
         carriages: Array.from({ length: CARRIAGE_COUNT }, () => ({ ore: 0.0 }))
       },
-      craneA: { ore: 0.0 },
-      craneB: { ore: 0.0 },
-      quarryA: new Float32Array(480),  // 60 cols * 8 rows
-      quarryB: new Float32Array(480),  // 60 cols * 8 rows
+      craneA: {
+        ore: 0.0,
+        state: 'IDLE',           // IDLE, RECEIVING, STAGING, READY, TRANSFERRING, EMPTY
+        capacity: 50,             // Max ore the crane can hold
+        transferRate: 3,          // Units per second from truck
+        readyThreshold: 15,       // Min ore to broadcast READY
+        stagedTime: 0,            // Time ore has been in staging
+        maxStageTime: 5           // Broadcast READY after this time
+      },
+      craneB: {
+        ore: 0.0,
+        state: 'IDLE',
+        capacity: 50,
+        transferRate: 3,
+        readyThreshold: 15,
+        stagedTime: 0,
+        maxStageTime: 5
+      },
+      quarryA: {
+        iron: new Float32Array(480),
+        coal: new Float32Array(480),
+        gold: new Float32Array(480)
+      },
+      quarryB: {
+        iron: new Float32Array(480),
+        coal: new Float32Array(480),
+        gold: new Float32Array(480)
+      }
       quarryAFlash: 0,  // Flash timer for quarry A
       quarryBFlash: 0,  // Flash timer for quarry B
       lastQuarryATotal: 0,  // Track previous fill state
@@ -496,14 +772,132 @@
       stats: {
         oreMoved: 0.0,
         cycleCount: 0,
-        totalTime: 0.0
+        totalTime: 0.0,
+        oreExtracted: 0.0,     // Total ore extracted from quarries
+        blocksPerSecond: 0.0,  // Efficiency: ore moved per second
+        trainLoadFactor: 0.0,  // Avg cargo / max capacity
+        craneQueueTime: 0.0    // Avg wait time for crane access
+      },
+      progression: {
+        milestonesHit: 0,      // Number of unlocked milestones
+        speedBonus: 1.0,       // Truck speed multiplier
+        capacityBonus: 1.0     // Crane capacity multiplier
       }
     };
 
-    // Initialize quarries: A full, B empty (60 cols * 8 rows = 480 cells)
+    // Initialize quarries: A full with mixed ore types, B empty
+    // Mixed ore distribution: 40% iron, 35% coal, 25% gold
     for (let i = 0; i < 480; i++) {
-      state.quarryA[i] = 7 + Math.random() * 1;
-      state.quarryB[i] = 0 + Math.random() * 1;
+      const rand = Math.random();
+      const fullAmount = 7 + Math.random() * 1;
+      const emptyAmount = 0 + Math.random() * 0.5;
+
+      if (rand < 0.4) {
+        state.quarryA.iron[i] = fullAmount;
+      } else if (rand < 0.75) {
+        state.quarryA.coal[i] = fullAmount;
+      } else {
+        state.quarryA.gold[i] = fullAmount;
+      }
+
+      // B stays empty initially
+      state.quarryB.iron[i] = emptyAmount;
+      state.quarryB.coal[i] = emptyAmount;
+      state.quarryB.gold[i] = emptyAmount;
+    }
+
+    /* ===== BEHAVIOR TREE BUILDERS ===== */
+
+    /**
+     * Build truck behavior tree
+     * Trucks follow: Idle → Quarry (extract ore) → Crane (deposit)
+     */
+    function buildTruckBehaviorTree() {
+      return new Sequence([
+        // Check if truck should be active
+        new Condition((truck, dt) => {
+          // If reversed and on side B, or not reversed and on side A, should go to quarry
+          if ((!state.isReversed && truck.side === 'A') || (state.isReversed && truck.side === 'B')) {
+            return true;
+          }
+          if ((!state.isReversed && truck.side === 'B') || (state.isReversed && truck.side === 'A')) {
+            return true;
+          }
+          return false;
+        }),
+        // Main truck activity
+        new Selector([
+          // If idle, determine phase
+          new Sequence([
+            new Condition((truck) => truck.phase === 'IDLE'),
+            new Action((truck) => {
+              if ((!state.isReversed && truck.side === 'A') || (state.isReversed && truck.side === 'B')) {
+                truck.phase = 'TO_QUARRY';
+              } else {
+                truck.phase = 'TO_CRANE';
+              }
+              return BehaviorStatus.SUCCESS;
+            })
+          ]),
+          // If going to quarry
+          new Sequence([
+            new Condition((truck) => truck.phase === 'TO_QUARRY'),
+            new Action((truck, dt) => updateTruckToQuarry(truck, dt))
+          ]),
+          // If at quarry (loading)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_QUARRY'),
+            new Action((truck, dt) => updateTruckAtQuarry(truck, dt))
+          ]),
+          // If going to crane
+          new Sequence([
+            new Condition((truck) => truck.phase === 'TO_CRANE'),
+            new Action((truck, dt) => updateTruckToCrane(truck, dt))
+          ]),
+          // If at crane (unloading)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_CRANE'),
+            new Action((truck, dt) => updateTruckAtCrane(truck, dt))
+          ]),
+          // If at pullover (waiting)
+          new Sequence([
+            new Condition((truck) => truck.phase === 'AT_PULLOVER'),
+            new Action((truck, dt) => updateTruckAtPullover(truck, dt))
+          ])
+        ])
+      ]);
+    }
+
+    /**
+     * Build train behavior tree
+     * Train follows: Docked (loading) → Depart → Transit → Arrive → Dock
+     */
+    function buildTrainBehaviorTree() {
+      return new Sequence([
+        new Selector([
+          // If docked, check if should depart
+          new Sequence([
+            new Condition((train) => train.phase === 'DOCKED'),
+            new Selector([
+              // Check dispatch conditions
+              new Sequence([
+                new Condition((train) => canTrainDispatch()),
+                new Action((train) => {
+                  train.phase = 'ACCEL';
+                  return BehaviorStatus.SUCCESS;
+                })
+              ]),
+              // Otherwise stay docked
+              new Action((train) => BehaviorStatus.SUCCESS)
+            ])
+          ]),
+          // If in transit, update position
+          new Sequence([
+            new Condition((train) => ['ACCEL', 'CRUISE', 'DECEL'].includes(train.phase)),
+            new Action((train, dt) => updateTrainMovement(train, dt))
+          ])
+        ])
+      ]);
     }
 
     // Truck colors - warm earthy, retro palette
@@ -516,7 +910,11 @@
       '#8b5e3c'   // tan-brown
     ];
 
-    // Initialize trucks with unique colors
+    // Build behavior trees (shared for all trucks of same type)
+    const truckBehaviorTree = buildTruckBehaviorTree();
+    const trainBehaviorTree = buildTrainBehaviorTree();
+
+    // Initialize trucks with unique colors and behavior trees
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
       state.trucks.push({
         side: 'A',
@@ -527,7 +925,11 @@
         x: ROAD_A[0].x,
         y: ROAD_A[0].y,
         colorIdx: i,
-        bobbleTime: 0
+        bobbleTime: 0,
+        behaviorTree: truckBehaviorTree,
+        pulloverZoneIdx: -1,       // Current zone index (-1 = none)
+        targetCellIdx: -1,         // Ore cell being extracted from
+        cargoType: 'IRON'          // Type of ore being carried
       });
     }
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
@@ -540,21 +942,425 @@
         x: ROAD_B[0].x,
         y: ROAD_B[0].y,
         colorIdx: (i + TRUCKS_PER_STATION) % TRUCK_COLORS.length,
-        bobbleTime: 0
+        bobbleTime: 0,
+        behaviorTree: truckBehaviorTree,
+        pulloverZoneIdx: -1,       // Current zone index (-1 = none)
+        targetCellIdx: -1,         // Ore cell being extracted from
+        cargoType: 'IRON'          // Type of ore being carried
       });
     }
 
+    // Add behavior tree to train
+    state.train.behaviorTree = trainBehaviorTree;
+
     /* ===== TRAIN MOVEMENT ===== */
     function updateTrain(dt) {
+      // Execute behavior tree for train
+      state.train.behaviorTree.tick(state.train, dt);
+    }
+
+    /* ===== CRANE OPERATIONS ===== */
+    function updateCranes(dt) {
       const train = state.train;
 
+      if (train.atStation === 'A') {
+        // At station A: load craneA ore into train
+        transferCraneToTrain(state.craneA, train, dt);
+      } else if (train.atStation === 'B') {
+        // At station B: unload train carriages into craneB
+        const UNLOAD_RATE = 4.0;
+        const delta = UNLOAD_RATE * dt;
+
+        for (let i = 0; i < CARRIAGE_COUNT; i++) {
+          if (train.carriages[i].ore <= 0) break;
+          const space = state.craneB.capacity - state.craneB.ore;
+          const xfer = Math.min(train.carriages[i].ore, space, delta);
+          train.carriages[i].ore -= xfer;
+          state.craneB.ore += xfer;
+          state.stats.oreMoved += xfer;
+        }
+        updateCraneState(state.craneB, dt);
+      }
+
+      // Always update crane states for visual feedback
+      updateCraneState(state.craneA, dt);
+      updateCraneState(state.craneB, dt);
+    }
+
+    /* ===== QUARRY HELPERS ===== */
+    function quarryTotal(q) {
+      if (!q.iron) {
+        // Legacy single-array format (shouldn't happen now)
+        return Array.from(q).reduce((s, h) => s + h, 0);
+      }
+      // Multi-ore format
+      const iron = Array.from(q.iron).reduce((s, h) => s + h, 0);
+      const coal = Array.from(q.coal).reduce((s, h) => s + h, 0);
+      const gold = Array.from(q.gold).reduce((s, h) => s + h, 0);
+      return iron + coal + gold;
+    }
+
+    /**
+     * Get total ore by type for a quarry
+     */
+    function quarryTotalByType(q, type) {
+      if (!q[type]) return 0;
+      return Array.from(q[type]).reduce((s, h) => s + h, 0);
+    }
+
+    /**
+     * Find nearest ore cell to truck position using proximity (multi-ore aware)
+     * @param {Object} quarry - quarry object with iron/coal/gold arrays
+     * @param {Object} quarryDef - quarry definition with cols/rows
+     * @param {number} truckX - truck world x position
+     * @param {number} truckY - truck world y position
+     * @param {number} radiusCells - search radius in cells (default 10)
+     * @returns {Object} {cellIdx, oreType} or {cellIdx: -1} if none found
+     */
+    function findNearestOreCell(quarry, quarryDef, truckX, truckY, radiusCells = 10) {
+      // Convert truck world position to quarry grid coordinates
+      const relX = truckX - quarryDef.x;
+      const relY = truckY - quarryDef.y;
+      const truckCol = Math.floor(relX / quarryDef.cellSize);
+      const truckRow = Math.floor(relY / quarryDef.cellSize);
+
+      let bestIdx = -1;
+      let bestDist = Infinity;
+      let bestOre = -1;
+      let bestType = 'IRON';
+
+      // Search radius around truck for any ore
+      for (let r = 0; r < quarryDef.rows; r++) {
+        for (let c = 0; c < quarryDef.cols; c++) {
+          const distX = c - truckCol;
+          const distY = r - truckRow;
+          const dist = Math.sqrt(distX * distX + distY * distY);
+
+          if (dist <= radiusCells) {
+            const idx = r * quarryDef.cols + c;
+            // Check all ore types
+            for (const [type, value] of Object.entries(quarry)) {
+              const ore = value[idx];
+              // Prefer valuable ores (gold > coal > iron), then highest amount
+              const typeValue = type === 'GOLD' ? 3 : (type === 'COAL' ? 2 : 1);
+              const score = ore * typeValue; // Score = amount * type-value
+              const bestScore = bestOre * (bestType === 'GOLD' ? 3 : (bestType === 'COAL' ? 2 : 1));
+
+              if (ore > 0 && (score > bestScore || (score === bestScore && dist < bestDist))) {
+                bestIdx = idx;
+                bestDist = dist;
+                bestOre = ore;
+                bestType = type;
+              }
+            }
+          }
+        }
+      }
+
+      return { cellIdx: bestIdx, oreType: bestType };
+    }
+
+    /**
+     * Remove ore from specific cell index and type
+     * @param {Object} quarry - quarry object with iron/coal/gold arrays
+     * @param {number} cellIdx - cell index to extract from
+     * @param {string} oreType - type of ore (IRON, COAL, GOLD)
+     * @param {number} amount - amount to extract
+     * @returns {number} actual amount extracted
+     */
+    function removeOreFromCell(quarry, cellIdx, oreType, amount) {
+      if (cellIdx < 0 || !quarry[oreType] || cellIdx >= quarry[oreType].length || quarry[oreType][cellIdx] <= 0) {
+        return 0;
+      }
+      const xfer = Math.min(quarry[oreType][cellIdx], amount);
+      quarry[oreType][cellIdx] -= xfer;
+      return xfer;
+    }
+
+    function removeOreFromQuarry(q, amount, type = 'IRON') {
+      if (!q[type]) return 0;
+      let remaining = amount;
+      // Remove from tallest cells first for this ore type
+      for (let iter = 0; iter < 10 && remaining > 0; iter++) {
+        let maxIdx = -1, maxH = -1;
+        for (let i = 0; i < q[type].length; i++) {
+          if (q[type][i] > maxH) {
+            maxH = q[type][i];
+            maxIdx = i;
+          }
+        }
+        if (maxIdx === -1) break;
+        const xfer = Math.min(q[type][maxIdx], remaining);
+        q[type][maxIdx] -= xfer;
+        remaining -= xfer;
+      }
+      return amount - remaining;
+    }
+
+    function depositOreToQuarry(q, amount, type = 'IRON') {
+      if (!q[type]) return 0;
+      let remaining = amount;
+      // Deposit to lowest cells first for this ore type
+      for (let iter = 0; iter < 10 && remaining > 0; iter++) {
+        let minIdx = -1, minH = Infinity;
+        for (let i = 0; i < q[type].length; i++) {
+          if (q[type][i] < minH && q[type][i] < 8) {
+            minH = q[type][i];
+            minIdx = i;
+          }
+        }
+        if (minIdx === -1) break;
+        const space = Math.min(8 - q[type][minIdx], remaining);
+        q[type][minIdx] += space;
+        remaining -= space;
+      }
+      return amount - remaining;
+    }
+
+    /* ===== PULLOVER ZONE MANAGEMENT ===== */
+
+    /**
+     * Find best available pullover zone for a truck
+     * Returns zone index with available capacity, or -1 if full
+     */
+    function findBestPulloverZone(truck) {
+      const zones = truck.side === 'A' ? PULLOVER_A_ZONES : PULLOVER_B_ZONES;
+      let bestIdx = -1;
+
+      for (let i = 0; i < zones.length; i++) {
+        const zone = zones[i];
+        // Count trucks already in this zone
+        let occupancy = 0;
+        for (const other of state.trucks) {
+          if (other !== truck && other.side === truck.side && other.pulloverZoneIdx === i) {
+            occupancy++;
+          }
+        }
+
+        if (occupancy < zone.capacity) {
+          // Prefer the closest available zone
+          if (bestIdx === -1 || i < bestIdx) {
+            bestIdx = i;
+            break; // Take first available zone
+          }
+        }
+      }
+
+      return bestIdx;
+    }
+
+    /**
+     * Get pullover zone target distance for a truck
+     */
+    function getPulloverZoneDist(truck, zoneIdx) {
+      const zones = truck.side === 'A' ? PULLOVER_A_ZONES : PULLOVER_B_ZONES;
+      if (zoneIdx < 0 || zoneIdx >= zones.length) return 0;
+      return zones[zoneIdx].dist;
+    }
+
+    /* ===== TRUCK BEHAVIOR ACTION HANDLERS ===== */
+    // These functions are called by the behavior tree during truck updates
+
+    function updateTruckToQuarry(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      const roadLen = roadLength(road);
+
+      // First time going to quarry? Assign a pullover zone
+      if (truck.pulloverZoneIdx === -1) {
+        truck.pulloverZoneIdx = findBestPulloverZone(truck);
+        if (truck.pulloverZoneIdx === -1) {
+          // No zones available, wait at current position
+          truck.pulloverZoneIdx = 0; // Default to first zone
+        }
+      }
+
+      const targetDist = getPulloverZoneDist(truck, truck.pulloverZoneIdx);
+
+      // Advanced collision avoidance
+      let trucksAhead = 0;
+      let closestDist = Infinity;
+      for (const other of state.trucks) {
+        if (other === truck || other.side !== truck.side) continue;
+        const dist = other.roadDist - truck.roadDist;
+        if ((other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') && dist > 0) {
+          trucksAhead++;
+          closestDist = Math.min(closestDist, dist);
+        }
+      }
+
+      const safeDistance = 80 + (trucksAhead * 20);
+
+      if (closestDist < safeDistance && closestDist !== Infinity) {
+        truck.phase = 'AT_PULLOVER';
+        truck.pulloverTarget = Math.min(truck.roadDist + 100, targetDist);
+        truck.waitTimer = 0;
+      } else {
+        truck.roadDist += TRUCK_SPEED * dt;
+        if (truck.roadDist >= targetDist) {
+          truck.roadDist = targetDist;
+          truck.phase = 'AT_QUARRY';
+          truck.waitTimer = 1.5;
+        }
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtQuarry(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.waitTimer -= dt;
+      truck.bobbleTime += dt;
+
+      if (truck.waitTimer <= 0) {
+        // Use proximity-based extraction instead of global removal
+        const quarry = truck.side === 'A' ? state.quarryA : state.quarryB;
+        const quarryDef = truck.side === 'A' ? QUARRY_A : QUARRY_B;
+
+        // Find nearest ore cell within 10-cell radius (multi-ore aware)
+        const result = findNearestOreCell(quarry, quarryDef, truck.x, truck.y, 10);
+
+        if (result.cellIdx >= 0) {
+          // Extract from that specific cell
+          const extractAmount = 2.0;
+          truck.ore = removeOreFromCell(quarry, result.cellIdx, result.oreType, extractAmount);
+          truck.cargoType = result.oreType;
+          truck.targetCellIdx = result.cellIdx;
+        } else {
+          // No ore nearby, try each type as fallback
+          let extracted = false;
+          for (const type of ['GOLD', 'COAL', 'IRON']) {
+            for (let iter = 0; iter < 3; iter++) {
+              let maxIdx = -1, maxH = -1;
+              for (let i = 0; i < quarry[type].length; i++) {
+                if (quarry[type][i] > maxH) {
+                  maxH = quarry[type][i];
+                  maxIdx = i;
+                }
+              }
+              if (maxIdx !== -1) {
+                truck.ore = removeOreFromCell(quarry, maxIdx, type, 2.0);
+                truck.cargoType = type;
+                truck.targetCellIdx = -1;
+                extracted = true;
+                break;
+              }
+            }
+            if (extracted) break;
+          }
+        }
+
+        truck.phase = 'TO_CRANE';
+        truck.bobbleTime = 0;
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckToCrane(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.roadDist -= TRUCK_SPEED * dt;
+
+      if (truck.roadDist <= 0) {
+        truck.roadDist = 0;
+        truck.phase = 'AT_CRANE';
+        truck.waitTimer = 1.0;
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtCrane(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+      truck.waitTimer -= dt;
+      truck.bobbleTime += dt;
+
+      if (truck.waitTimer <= 0) {
+        const crane = truck.side === 'A' ? state.craneA : state.craneB;
+        transferTruckToCrane(truck, crane, dt);
+
+        if (truck.ore <= 0) {
+          truck.phase = 'IDLE';
+          truck.bobbleTime = 0;
+          truck.pulloverZoneIdx = -1; // Reset zone for next trip
+        }
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    function updateTruckAtPullover(truck, dt) {
+      const road = truck.side === 'A' ? ROAD_A : ROAD_B;
+
+      let quarryOccupied = false;
+      for (const other of state.trucks) {
+        if (other === truck || other.side !== truck.side) continue;
+        if (other.phase === 'AT_QUARRY') {
+          quarryOccupied = true;
+          break;
+        }
+      }
+
+      if (!quarryOccupied) {
+        truck.phase = 'TO_QUARRY';
+      }
+
+      const pos = roadPosAtDist(road, truck.roadDist);
+      truck.x = pos.x;
+      truck.y = pos.y;
+      return BehaviorStatus.RUNNING;
+    }
+
+    /* ===== TRAIN BEHAVIOR ACTION HANDLERS ===== */
+
+    function canTrainDispatch() {
+      const train = state.train;
+      if (train.phase !== 'DOCKED') return false;
+
+      // Calculate total cargo loaded
+      let cargoLoaded = 0;
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        cargoLoaded += train.carriages[i].ore;
+      }
+
+      const maxCapacity = CARRIAGE_COUNT * CARRIAGE_CAPACITY;  // 8 blocks max
+      const crane = (train.atStation === 'A') ? state.craneA : state.craneB;
+
+      // Smart dispatch rules:
+      // 1. If max dwell time expired, depart regardless
+      if (train.dwellTimer <= 0) return true;
+
+      // 2. If cargo >= target capacity, depart
+      if (cargoLoaded >= TARGET_LOAD_CAPACITY) return true;
+
+      // 3. If crane is READY and cargo >= urgent threshold, depart sooner
+      if (craneReadyToLoadTrain(crane) && cargoLoaded >= URGENT_LOAD_CAPACITY) return true;
+
+      // 4. Never leave with nothing if anything is coming
+      if (cargoLoaded < MIN_LOADED_TO_DEPART && crane.ore > 0) return false;
+
+      return false;
+    }
+
+    function updateTrainMovement(train, dt) {
       if (train.phase === 'DOCKED') {
         train.dwellTimer -= dt;
-        if (train.dwellTimer <= 0) {
+        // Auto-dispatch when conditions are met
+        if (canTrainDispatch()) {
           train.phase = 'ACCEL';
-          train.dwellTimer = 0;
         }
-        return;
+        return BehaviorStatus.RUNNING;
       }
 
       train.dist = wrapDist(train.dist + train.speed * dt);
@@ -587,79 +1393,90 @@
           train.lastStationDist = nextStDist;
         }
       }
+
+      return BehaviorStatus.RUNNING;
     }
 
-    /* ===== CRANE OPERATIONS ===== */
-    function updateCranes(dt) {
-      if (state.train.phase !== 'DOCKED') return;
+    /* ===== CRANE STATE MANAGEMENT ===== */
 
-      const RATE = 2.0;
-      const delta = RATE * dt;
-      const train = state.train;
+    /**
+     * Check if crane can receive ore from a truck
+     */
+    function canCraneReceiveTruck(crane) {
+      return crane.state !== 'EMPTY' && crane.ore < crane.capacity;
+    }
 
-      if (train.atStation === 'A') {
-        // Load: craneA → carriages
-        for (let i = 0; i < CARRIAGE_COUNT; i++) {
-          if (state.craneA.ore <= 0) break;
-          const space = CARRIAGE_CAPACITY - train.carriages[i].ore;
-          const xfer = Math.min(space, state.craneA.ore, delta);
-          train.carriages[i].ore += xfer;
-          state.craneA.ore -= xfer;
-        }
-      } else {
-        // Unload: carriages → craneB
-        for (let i = CARRIAGE_COUNT - 1; i >= 0; i--) {
-          if (train.carriages[i].ore <= 0) break;
-          const space = CARRIAGE_CAPACITY * CARRIAGE_COUNT - state.craneB.ore;
-          const xfer = Math.min(train.carriages[i].ore, space, delta);
-          train.carriages[i].ore -= xfer;
-          state.craneB.ore += xfer;
-          state.stats.oreMoved += xfer;
-        }
+    /**
+     * Check if crane has enough ore to signal train
+     */
+    function craneReadyToLoadTrain(crane) {
+      return crane.state === 'READY' && crane.ore >= 1;
+    }
+
+    /**
+     * Update crane state machine based on ore levels and time
+     */
+    function updateCraneState(crane, dt) {
+      crane.stagedTime += dt;
+
+      // State transitions
+      if (crane.ore <= 0) {
+        crane.state = 'EMPTY';
+      } else if (crane.state === 'IDLE' && crane.ore > 0) {
+        crane.state = 'RECEIVING';
+      } else if (crane.state === 'RECEIVING' && crane.ore >= crane.readyThreshold) {
+        crane.state = 'STAGING';
+        crane.stagedTime = 0;
+      } else if (crane.state === 'STAGING' && crane.ore >= crane.readyThreshold && crane.stagedTime >= 0.5) {
+        crane.state = 'READY';
+      }
+
+      // Reset staging time when ore decreases
+      if (crane.ore < crane.readyThreshold) {
+        crane.state = 'RECEIVING';
+        crane.stagedTime = 0;
       }
     }
 
-    /* ===== QUARRY HELPERS ===== */
-    function quarryTotal(q) {
-      return Array.from(q).reduce((s, h) => s + h, 0);
+    /**
+     * Transfer ore from truck to crane
+     */
+    function transferTruckToCrane(truck, crane, dt) {
+      if (!canCraneReceiveTruck(crane) || truck.ore <= 0) {
+        return;
+      }
+
+      const delta = crane.transferRate * dt;
+      const space = crane.capacity - crane.ore;
+      const xfer = Math.min(truck.ore, space, delta);
+
+      truck.ore -= xfer;
+      crane.ore += xfer;
+      updateCraneState(crane, dt);
     }
 
-    function removeOreFromQuarry(q, amount) {
-      let remaining = amount;
-      // Remove from tallest cells first
-      for (let iter = 0; iter < 10 && remaining > 0; iter++) {
-        let maxIdx = -1, maxH = -1;
-        for (let i = 0; i < q.length; i++) {
-          if (q[i] > maxH) {
-            maxH = q[i];
-            maxIdx = i;
-          }
-        }
-        if (maxIdx === -1) break;
-        const xfer = Math.min(q[maxIdx], remaining);
-        q[maxIdx] -= xfer;
-        remaining -= xfer;
+    /**
+     * Transfer ore from crane to train carriages
+     */
+    function transferCraneToTrain(crane, train, dt) {
+      if (crane.ore <= 0 || train.phase !== 'DOCKED') {
+        return;
       }
-      return amount - remaining;
-    }
 
-    function depositOreToQuarry(q, amount) {
-      let remaining = amount;
-      // Deposit to lowest cells first
-      for (let iter = 0; iter < 10 && remaining > 0; iter++) {
-        let minIdx = -1, minH = Infinity;
-        for (let i = 0; i < q.length; i++) {
-          if (q[i] < minH && q[i] < 8) {
-            minH = q[i];
-            minIdx = i;
-          }
-        }
-        if (minIdx === -1) break;
-        const space = Math.min(8 - q[minIdx], remaining);
-        q[minIdx] += space;
-        remaining -= space;
+      const TRANSFER_RATE = 4.0; // Units per second
+      const delta = TRANSFER_RATE * dt;
+
+      // Fill carriages in order
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        if (crane.ore <= 0) break;
+        const space = CARRIAGE_CAPACITY - train.carriages[i].ore;
+        const xfer = Math.min(space, crane.ore, delta);
+        train.carriages[i].ore += xfer;
+        crane.ore -= xfer;
       }
-      return amount - remaining;
+
+      state.stats.oreMoved += delta; // Track total moved
+      updateCraneState(crane, dt);
     }
 
     /* ===== TRUCK MOVEMENT ===== */
@@ -696,124 +1513,63 @@
     }
 
     function updateTrucks(dt) {
-      const LOAD_TIME = 1.5;
-      const DEPOSIT_TIME = 1.0;
-      const PULLOVER_DIST = 350;  // Distance from end where pullover area starts
-
       for (const truck of state.trucks) {
-        const road = (truck.side === 'A') ? ROAD_A : ROAD_B;
-        const roadLen = roadLength(road);
-
-        // Update bobble timer for animation
-        if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
-          truck.bobbleTime += dt;
-        }
-
-        if (truck.phase === 'IDLE') {
-          // Determine next phase based on reversal state and which side truck is on
-          if (!state.isReversed && truck.side === 'A') {
-            truck.phase = 'TO_QUARRY';
-            // roadDist stays at current position (station), will naturally move toward quarry
-          } else if (state.isReversed && truck.side === 'B') {
-            truck.phase = 'TO_QUARRY';
-            // roadDist stays at current position (station), will naturally move toward quarry
-          } else if (!state.isReversed && truck.side === 'B') {
-            truck.phase = 'TO_CRANE';
-            // roadDist stays at current position, will naturally move toward station
-          } else if (state.isReversed && truck.side === 'A') {
-            truck.phase = 'TO_CRANE';
-            // roadDist stays at current position, will naturally move toward station
-          }
-          continue;
-        }
-
-        if (truck.phase === 'TO_QUARRY') {
-          // Advanced collision avoidance: count trucks ahead and maintain safe distance
-          let trucksAhead = 0;
-          let closestDist = Infinity;
-
-          for (const other of state.trucks) {
-            if (other === truck || other.side !== truck.side) continue;
-            const dist = other.roadDist - truck.roadDist;
-
-            // Count trucks in quarry or approaching
-            if ((other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') && dist > 0) {
-              trucksAhead++;
-              closestDist = Math.min(closestDist, dist);
-            }
-          }
-
-          // Adaptive spacing: increase spacing if multiple trucks ahead
-          const safeDistance = 80 + (trucksAhead * 20);
-
-          if (closestDist < safeDistance && closestDist !== Infinity) {
-            // Truck ahead too close, go to pullover
-            truck.phase = 'AT_PULLOVER';
-            truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
-            truck.waitTimer = 0;
-          } else {
-            // Safe to proceed
-            truck.roadDist += TRUCK_SPEED * dt;
-            if (truck.roadDist >= PULLOVER_DIST) {
-              truck.roadDist = PULLOVER_DIST;
-              truck.phase = 'AT_QUARRY';
-              truck.waitTimer = LOAD_TIME;
-            }
-          }
-        } else if (truck.phase === 'AT_PULLOVER') {
-          // Smart pullover: wait if any truck on same side is at quarry
-          let quarryOccupied = false;
-          for (const other of state.trucks) {
-            if (other === truck || other.side !== truck.side) continue;
-            if (other.phase === 'AT_QUARRY') {
-              quarryOccupied = true;
-              break;
-            }
-          }
-
-          if (!quarryOccupied) {
-            // Quarry is free, resume to quarry
-            truck.phase = 'TO_QUARRY';
-            // Don't reset roadDist - continue from where pullover started
-          }
-        } else if (truck.phase === 'AT_QUARRY') {
-          truck.waitTimer -= dt;
-          if (truck.waitTimer <= 0) {
-            const removed = removeOreFromQuarry(
-              (truck.side === 'A') ? state.quarryA : state.quarryB,
-              2.0
-            );
-            truck.ore = removed;
-            truck.phase = 'TO_CRANE';
-            // Don't snap to roadLen; truck will naturally move backward from current position
-            truck.bobbleTime = 0;
-          }
-        } else if (truck.phase === 'TO_CRANE') {
-          truck.roadDist -= TRUCK_SPEED * dt;
-          if (truck.roadDist <= 0) {
-            truck.roadDist = 0;
-            truck.phase = 'AT_CRANE';
-            truck.waitTimer = DEPOSIT_TIME;
-          }
-        } else if (truck.phase === 'AT_CRANE') {
-          truck.waitTimer -= dt;
-          if (truck.waitTimer <= 0) {
-            if (truck.side === 'A') {
-              state.craneA.ore += truck.ore;
-            } else {
-              state.craneB.ore += truck.ore;
-            }
-            truck.ore = 0;
-            truck.phase = 'IDLE';
-            truck.bobbleTime = 0;
-          }
-        }
-
-        // Update position
-        const pos = roadPosAtDist(road, truck.roadDist);
-        truck.x = pos.x;
-        truck.y = pos.y;
+        // Execute behavior tree for each truck
+        truck.behaviorTree.tick(truck, dt);
       }
+    }
+
+    /* ===== PROGRESSION & METRICS ===== */
+
+    /**
+     * Calculate and update game metrics
+     */
+    function updateMetrics(dt) {
+      // Track ore extracted (quarry A starts full, B empty)
+      const totA = quarryTotal(state.quarryA);
+      const initialA = MAX_QUARRY_ORE;
+      const currentlyExtracted = initialA - totA;
+      state.stats.oreExtracted = Math.max(state.stats.oreExtracted, currentlyExtracted);
+
+      // Efficiency: blocks moved per second
+      state.stats.blocksPerSecond = state.stats.totalTime > 0 ? state.stats.oreMoved / state.stats.totalTime : 0;
+
+      // Train load factor: average cargo / max capacity
+      let totalCarriage = 0;
+      for (let i = 0; i < CARRIAGE_COUNT; i++) {
+        totalCarriage += state.train.carriages[i].ore;
+      }
+      const maxCapacity = CARRIAGE_COUNT * CARRIAGE_CAPACITY;
+      state.stats.trainLoadFactor = maxCapacity > 0 ? totalCarriage / maxCapacity : 0;
+
+      // Check for progression milestones
+      const milestoneCounts = [100, 250, 500, 750, 1000, 1500, 2000];
+      let nextMilestone = 0;
+      for (let i = 0; i < milestoneCounts.length; i++) {
+        if (state.stats.oreExtracted >= milestoneCounts[i]) {
+          nextMilestone = i + 1;
+        }
+      }
+
+      // Apply progression bonuses
+      if (nextMilestone > state.progression.milestonesHit) {
+        state.progression.milestonesHit = nextMilestone;
+
+        // Unlock bonuses every 2 milestones
+        if (nextMilestone % 2 === 0) {
+          state.progression.speedBonus = 1.0 + (nextMilestone / 2) * 0.1;  // +10% per bonus
+          state.progression.capacityBonus = 1.0 + (nextMilestone / 2) * 0.2; // +20% per bonus
+        }
+      }
+    }
+
+    /**
+     * Check if metrics meet "green" status (>0.7)
+     */
+    function getMetricColor(value) {
+      if (value >= 0.7) return '#5da857';  // Green
+      if (value >= 0.4) return '#d4a835';  // Yellow
+      return '#c97a3a';                     // Orange/red
     }
 
     /* ===== REVERSAL LOGIC ===== */
@@ -917,8 +1673,43 @@
         ctx.stroke();
       };
 
+      const drawPulloverZones = (road, zones, side) => {
+        // Draw zone markers along road
+        for (let i = 0; i < zones.length; i++) {
+          const zone = zones[i];
+          const pos = roadPosAtDist(road, zone.dist);
+
+          // Zone background - semi-transparent
+          ctx.fillStyle = 'rgba(212, 168, 60, 0.3)';
+          ctx.fillRect(pos.x - 25, pos.y - 20, 50, 40);
+
+          // Zone border
+          ctx.strokeStyle = '#d4a835';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(pos.x - 25, pos.y - 20, 50, 40);
+
+          // Zone label
+          ctx.fillStyle = '#6b4423';
+          ctx.font = '10px "Courier New"';
+          ctx.textAlign = 'center';
+          ctx.fillText(`Z${i + 1}`, pos.x, pos.y - 8);
+
+          // Occupancy indicator
+          let occupancy = 0;
+          for (const truck of state.trucks) {
+            if (truck.side === side && truck.pulloverZoneIdx === i) {
+              occupancy++;
+            }
+          }
+          ctx.fillStyle = occupancy >= zone.capacity ? '#c97a3a' : '#5da857';
+          ctx.fillText(`${occupancy}/${zone.capacity}`, pos.x, pos.y + 8);
+        }
+      };
+
       drawRoad(ROAD_A);
       drawRoad(ROAD_B);
+      drawPulloverZones(ROAD_A, PULLOVER_A_ZONES, 'A');
+      drawPulloverZones(ROAD_B, PULLOVER_B_ZONES, 'B');
     }
 
     function drawQuarries() {
@@ -934,15 +1725,27 @@
         for (let row = 0; row < rows; row++) {
           for (let col = 0; col < cols; col++) {
             const idx = row * cols + col;
-            const h = q[idx] || 0;
 
-            // Color gradient: empty (light tan) to full (dark brown/orange) - ore colors
-            let color;
-            if (h < 1) color = '#d4c4b0';           // empty: light tan
-            else if (h < 2) color = '#c9b8a8';      // low: medium tan
-            else if (h < 4) color = '#b8a896';      // medium: darker tan
-            else if (h < 6) color = '#a87852';      // high: brown-orange
-            else color = '#9a6e3e';                 // full: dark brown-ore
+            // Find dominant ore type in this cell
+            let iron = q.iron[idx] || 0;
+            let coal = q.coal[idx] || 0;
+            let gold = q.gold[idx] || 0;
+            const total = iron + coal + gold;
+
+            // Color based on ore type with intensity based on amount
+            let color = '#d4c4b0'; // empty: light tan
+            if (total > 0) {
+              if (gold > coal && gold > iron) {
+                // Gold cell - yellow/gold
+                color = gold < 3 ? '#e8d070' : (gold < 6 ? '#d4a835' : '#c89a1a');
+              } else if (coal > iron) {
+                // Coal cell - gray
+                color = coal < 3 ? '#5a5a5a' : (coal < 6 ? '#3a3a3a' : '#1a1a1a');
+              } else {
+                // Iron cell - brown
+                color = iron < 3 ? '#a87852' : (iron < 6 ? '#8b6f47' : '#6b5a3a');
+              }
+            }
 
             ctx.fillStyle = color;
             ctx.fillRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
@@ -1006,42 +1809,107 @@
     }
 
     function drawTrack() {
-      // Sleepers - dark brown
-      ctx.fillStyle = '#6b4423';
+      // Track shadow for depth
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 20;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(PATH_WAYPOINTS[0].x, PATH_WAYPOINTS[0].y + 2);
+      for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
+        ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y + 2);
+      }
+      ctx.stroke();
+
+      // Draw sleepers with variation
       for (let i = 0; i < PATH_WAYPOINTS.length; i += 16) {
         const p = PATH_WAYPOINTS[i];
         const angle = angleAtDist(PATH_CUMULATIVE[i]);
+
+        // Slight color variation for hand-made look
+        const colorVar = (Math.sin(i * 0.5) * 0.1);
+        ctx.fillStyle = '#' + Math.round((107 + colorVar * 20)).toString(16).padStart(2, '0') +
+                       Math.round((68 + colorVar * 10)).toString(16).padStart(2, '0') +
+                       Math.round((35 + colorVar * 5)).toString(16).padStart(2, '0');
+
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(angle);
+
+        // Sleeper shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(-8, -2, 16, 3);
+
+        // Sleeper main
+        ctx.fillStyle = '#6b4423';
         ctx.fillRect(-8, -2, 16, 4);
         ctx.restore();
       }
 
-      // Rails - dark gray metal
-      ctx.strokeStyle = '#5a5a5a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(PATH_WAYPOINTS[0].x - 3, PATH_WAYPOINTS[0].y);
-      for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
-        ctx.lineTo(PATH_WAYPOINTS[i].x - 3, PATH_WAYPOINTS[i].y);
-      }
-      ctx.stroke();
+      // Double rails with gradient effect
+      const drawRail = (offsetX) => {
+        // Outer rail (dark shadow)
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(PATH_WAYPOINTS[0].x + offsetX, PATH_WAYPOINTS[0].y);
+        for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
+          ctx.lineTo(PATH_WAYPOINTS[i].x + offsetX, PATH_WAYPOINTS[i].y);
+        }
+        ctx.stroke();
 
-      ctx.beginPath();
-      ctx.moveTo(PATH_WAYPOINTS[0].x + 3, PATH_WAYPOINTS[0].y);
-      for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
-        ctx.lineTo(PATH_WAYPOINTS[i].x + 3, PATH_WAYPOINTS[i].y);
-      }
-      ctx.stroke();
+        // Inner rail (bright metal)
+        ctx.strokeStyle = '#6a6a6a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(PATH_WAYPOINTS[0].x + offsetX - 0.5, PATH_WAYPOINTS[0].y);
+        for (let i = 1; i < PATH_WAYPOINTS.length; i++) {
+          ctx.lineTo(PATH_WAYPOINTS[i].x + offsetX - 0.5, PATH_WAYPOINTS[i].y);
+        }
+        ctx.stroke();
+      };
+
+      drawRail(-4);  // Left rail
+      drawRail(4);   // Right rail
+
+      // Station approach zones
+      const drawStationZone = (stationDist, label) => {
+        const pos = posAtDist(stationDist);
+        // Loading zone indicator
+        ctx.fillStyle = 'rgba(212, 184, 60, 0.2)';
+        ctx.fillRect(pos.x - 25, pos.y - 30, 50, 60);
+        ctx.strokeStyle = '#d4b83c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pos.x - 25, pos.y - 30, 50, 60);
+
+        // Label
+        ctx.fillStyle = '#6b4423';
+        ctx.font = '9px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, pos.x, pos.y + 35);
+      };
+
+      drawStationZone(STATION_A_DIST, 'LOADING\nZONE A');
+      drawStationZone(STATION_B_DIST, 'LOADING\nZONE B');
     }
 
     function drawCrane(side) {
       const crane = (side === 'A') ? CRANE_A : CRANE_B;
+      const craneState = (side === 'A') ? state.craneA : state.craneB;
       const y = crane.baseY;
 
-      // Legs - rust red
-      ctx.strokeStyle = '#c9584c';
+      // State-based color for visual feedback
+      let stateColor = '#c9584c'; // Default: rust red
+      if (craneState.state === 'RECEIVING') stateColor = '#d4a835'; // Yellow
+      if (craneState.state === 'STAGING') stateColor = '#d4a835';   // Yellow
+      if (craneState.state === 'READY') stateColor = '#5da857';     // Green
+      if (craneState.state === 'TRANSFERRING') stateColor = '#c97a3a'; // Orange
+      if (craneState.state === 'EMPTY') stateColor = '#8a6b52';     // Dull tan
+
+      // Legs - colored by state
+      ctx.strokeStyle = stateColor;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
@@ -1053,16 +1921,16 @@
       ctx.lineTo(crane.x + 15, y + 40);
       ctx.stroke();
 
-      // Beam - rust red
-      ctx.strokeStyle = '#c9584c';
+      // Beam - colored by state
+      ctx.strokeStyle = stateColor;
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(crane.x - 15, y);
       ctx.lineTo(crane.x + 15, y);
       ctx.stroke();
 
-      // Trolley - warm orange-brown
-      const trolleyX = crane.x - 10 + ((side === 'A') ? state.craneA.ore : state.craneB.ore) * 2;
+      // Trolley position based on ore amount
+      const trolleyX = crane.x - 10 + craneState.ore * 2;
       ctx.fillStyle = '#d4854c';
       ctx.fillRect(trolleyX - 8, y - 4, 16, 8);
 
@@ -1074,12 +1942,20 @@
       ctx.lineTo(trolleyX, y + 20);
       ctx.stroke();
 
-      // Stacked ore - brown/tan ore colors
+      // Stacked ore - brown/tan ore colors with height based on capacity
       ctx.fillStyle = '#a87852';
-      const oreCount = Math.floor((side === 'A') ? state.craneA.ore : state.craneB.ore);
-      for (let i = 0; i < oreCount && i < 8; i++) {
+      const oreCount = Math.floor(craneState.ore);
+      const maxVisualStacks = 8;
+      for (let i = 0; i < oreCount && i < maxVisualStacks; i++) {
         ctx.fillRect(trolleyX - 6, y + 20 + i * 3, 12, 3);
       }
+
+      // State indicator text below crane (small)
+      ctx.fillStyle = '#3d2817';
+      ctx.font = '9px "Courier New"';
+      ctx.textAlign = 'center';
+      const stateText = craneState.ore.toFixed(0) + 'u';
+      ctx.fillText(stateText, crane.x, y + 65);
     }
 
     function drawLocomotive() {
@@ -1299,6 +2175,22 @@
       const trainCargo = train.carriages.reduce((s, c) => s + c.ore, 0);
       document.getElementById('trainCargo').textContent = `${Math.round(trainCargo)}/${CARRIAGE_COUNT * CARRIAGE_CAPACITY}`;
 
+      // Train dispatch status indicator
+      let statusText = 'WAITING';
+      if (train.phase === 'DOCKED') {
+        if (canTrainDispatch()) {
+          statusText = 'READY!';
+        } else {
+          const craneA = state.craneA.ore > 0 ? 'A' : '';
+          const craneB = state.craneB.ore > 0 ? 'B' : '';
+          const cranes = craneA + craneB;
+          statusText = cranes ? `Loading (${cranes})` : 'Waiting';
+        }
+      } else {
+        statusText = train.phase;
+      }
+      document.getElementById('trainStatus').textContent = statusText;
+
       // Carriages list
       let carriageHTML = '';
       for (let i = 0; i < CARRIAGE_COUNT; i++) {
@@ -1328,7 +2220,19 @@
       document.getElementById('trucksAStatus').textContent = truckCountA > 0 ? `${truckCountA}/3 busy` : 'idle';
       document.getElementById('trucksBStatus').textContent = truckCountB > 0 ? `${truckCountB}/3 busy` : 'idle';
 
-      // Metrics
+      // Metrics with color coding
+      const efficiency = state.stats.blocksPerSecond;
+      const effColor = getMetricColor(efficiency);
+      document.getElementById('metricsEfficiency').textContent = efficiency.toFixed(2);
+      document.getElementById('metricsEfficiency').style.color = effColor;
+
+      const loadFactor = Math.round(state.stats.trainLoadFactor * 100);
+      const loadColor = getMetricColor(state.stats.trainLoadFactor);
+      document.getElementById('metricsLoadFactor').textContent = `${loadFactor}%`;
+      document.getElementById('metricsLoadFactor').style.color = loadColor;
+
+      document.getElementById('metricsExtracted').textContent = Math.round(state.stats.oreExtracted);
+
       const oreMoved = Math.round(state.stats.oreMoved);
       const throughput = state.stats.totalTime > 0 ? Math.round((oreMoved / state.stats.totalTime) * 60) : 0;
       document.getElementById('metricsOreMoved').textContent = throughput;
@@ -1350,11 +2254,15 @@
 
       state.stats.totalTime += dt;
 
+      // Update spatial grid for proximity queries
+      spatialGrid.update(state.trucks);
+
       updateTrain(dt);
       updateCranes(dt);
       updateTrucks(dt);
       checkReversal();
       updateQuarryFlash(dt);
+      updateMetrics(dt);
 
       render();
 
