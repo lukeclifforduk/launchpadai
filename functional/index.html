@@ -24,15 +24,15 @@
 
     #gameContainer {
       display: flex;
-      width: 1200px;
-      height: 600px;
+      width: 1400px;
+      height: 700px;
       background: #1a1815;
       border: 2px solid #4a3a2a;
     }
 
     #gameCanvas {
-      width: 1000px;
-      height: 600px;
+      width: 1200px;
+      height: 700px;
       flex: none;
       background: #2a251f;
       display: block;
@@ -234,43 +234,43 @@
     /* ===== CANVAS SETUP ===== */
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 1000;
-    canvas.height = 600;
+    canvas.width = 1200;
+    canvas.height = 700;
 
     /* ===== CONSTANTS ===== */
-    const CANVAS_W = 1000, CANVAS_H = 600;
+    const CANVAS_W = 1200, CANVAS_H = 700;
     const CELL = 16; // terrain tile size
 
     // Oval track (rounded rectangle)
     const TK = {
-      LEFT: 100,
-      RIGHT: 900,
-      TOP: 70,
-      BOTTOM: 530,
-      RADIUS: 80
+      LEFT: 150,
+      RIGHT: 1050,
+      TOP: 100,
+      BOTTOM: 600,
+      RADIUS: 100
     };
 
     const CRUISE_SPEED = 52.95;  // px/sec
     const ACCEL_DIST = 150;      // px for accel/decel ramp
 
     // Station locations (pixel coords on track)
-    const STATION_A = { x: 200, y: 70 };   // top straight
-    const STATION_B = { x: 800, y: 530 };  // bottom straight
+    const STATION_A = { x: 300, y: 100 };   // top straight
+    const STATION_B = { x: 900, y: 600 };  // bottom straight
 
-    // Quarries (pixel coords + grid size)
-    const QUARRY_A = { x: 120, y: 90, cols: 10, rows: 8 };   // upper-left
-    const QUARRY_B = { x: 720, y: 370, cols: 10, rows: 8 };  // lower-right
+    // Quarries (pixel coords + grid size) - enlarged to 30px cells
+    const QUARRY_A = { x: 150, y: 120, cols: 10, rows: 8, cellSize: 30 };   // upper-left
+    const QUARRY_B = { x: 850, y: 380, cols: 10, rows: 8, cellSize: 30 };   // lower-right
 
     // Cranes
-    const CRANE_A = { x: 200, baseY: 55 };
-    const CRANE_B = { x: 800, baseY: 500 };
+    const CRANE_A = { x: 300, baseY: 85 };
+    const CRANE_B = { x: 900, baseY: 580 };
 
     const CARRIAGE_COUNT = 5;
     const CARRIAGE_CAPACITY = 8;
     const CARRIAGE_SPACING = 32;  // px center-to-center
 
     const DWELL_TIME = 9.0;        // seconds
-    const TRUCK_SPEED = 22;        // px/sec
+    const TRUCK_SPEED = 33;        // px/sec (50% faster than original 22)
     const TRUCKS_PER_STATION = 3;
     const DAY_CYCLE_SECS = 120.0;
 
@@ -278,19 +278,35 @@
     const EMPTY_THRESHOLD = 32;    // ~5%
     const FULL_THRESHOLD = 608;    // ~95%
 
-    // Road waypoints (pixel coords)
+    // Road waypoints - oval circuits with pullover areas
     const ROAD_A = [
-      { x: 200, y: 65 },
-      { x: 200, y: 88 },
-      { x: 130, y: 88 },
-      { x: 130, y: 105 }
+      // Approach from top
+      { x: 300, y: 85 },        // Station entrance
+      { x: 300, y: 140 },       // Move down
+      // Left side going down
+      { x: 100, y: 140 },       // Left turn
+      { x: 100, y: 370 },       // Left side pullover area
+      // Bottom going right
+      { x: 500, y: 370 },       // Bottom right corner
+      { x: 500, y: 140 },       // Right side pullover area
+      // Top right back to station
+      { x: 300, y: 140 },       // Back to approach
+      { x: 300, y: 85 }         // Station exit
     ];
 
     const ROAD_B = [
-      { x: 800, y: 535 },
-      { x: 800, y: 500 },
-      { x: 870, y: 500 },
-      { x: 870, y: 485 }
+      // Approach from bottom
+      { x: 900, y: 620 },       // Station entrance
+      { x: 900, y: 570 },       // Move up
+      // Right side going up
+      { x: 1100, y: 570 },      // Right turn
+      { x: 1100, y: 340 },      // Right side pullover area
+      // Top going left
+      { x: 600, y: 340 },       // Top left corner
+      { x: 600, y: 570 },       // Left side pullover area
+      // Bottom left back to station
+      { x: 900, y: 570 },       // Back to approach
+      { x: 900, y: 620 }        // Station exit
     ];
 
     /* ===== PATH SYSTEM ===== */
@@ -452,9 +468,12 @@
       craneB: { ore: 0.0 },
       quarryA: new Float32Array(80),
       quarryB: new Float32Array(80),
+      quarryAFlash: 0,  // Flash timer for quarry A
+      quarryBFlash: 0,  // Flash timer for quarry B
+      lastQuarryATotal: 0,  // Track previous fill state
+      lastQuarryBTotal: 0,  // Track previous fill state
       trucks: [],
       isReversed: false,
-      dayTime: 0.5,
       stats: {
         oreMoved: 0.0,
         cycleCount: 0,
@@ -468,7 +487,16 @@
       state.quarryB[i] = 0 + Math.random() * 1;
     }
 
-    // Initialize trucks
+    // Truck colors - warm earthy palette
+    const TRUCK_COLORS = [
+      '#d4554a',  // warm red
+      '#d4843a',  // orange
+      '#c8943a',  // burnt orange
+      '#a88550',  // tan
+      '#8b7a4a'   // brown
+    ];
+
+    // Initialize trucks with unique colors
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
       state.trucks.push({
         side: 'A',
@@ -477,7 +505,9 @@
         ore: 0.0,
         waitTimer: 0,
         x: ROAD_A[0].x,
-        y: ROAD_A[0].y
+        y: ROAD_A[0].y,
+        colorIdx: i,
+        bobbleTime: 0
       });
     }
     for (let i = 0; i < TRUCKS_PER_STATION; i++) {
@@ -488,7 +518,9 @@
         ore: 0.0,
         waitTimer: 0,
         x: ROAD_B[0].x,
-        y: ROAD_B[0].y
+        y: ROAD_B[0].y,
+        colorIdx: (i + TRUCKS_PER_STATION) % TRUCK_COLORS.length,
+        bobbleTime: 0
       });
     }
 
@@ -646,10 +678,16 @@
     function updateTrucks(dt) {
       const LOAD_TIME = 1.5;
       const DEPOSIT_TIME = 1.0;
+      const PULLOVER_DIST = 350;  // Distance from end where pullover area starts
 
       for (const truck of state.trucks) {
         const road = (truck.side === 'A') ? ROAD_A : ROAD_B;
         const roadLen = roadLength(road);
+
+        // Update bobble timer for animation
+        if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
+          truck.bobbleTime += dt;
+        }
 
         if (truck.phase === 'IDLE') {
           if (!state.isReversed && truck.side === 'A') {
@@ -669,11 +707,47 @@
         }
 
         if (truck.phase === 'TO_QUARRY') {
-          truck.roadDist += TRUCK_SPEED * dt;
-          if (truck.roadDist >= roadLen) {
-            truck.roadDist = roadLen;
-            truck.phase = 'AT_QUARRY';
-            truck.waitTimer = LOAD_TIME;
+          // Check for truck ahead blocking the path
+          let truckAhead = null;
+          let minDist = Infinity;
+          for (const other of state.trucks) {
+            if (other === truck || other.side !== truck.side) continue;
+            if (other.phase === 'AT_QUARRY' || other.phase === 'TO_QUARRY') {
+              const dist = other.roadDist - truck.roadDist;
+              if (dist > 0 && dist < minDist) {
+                minDist = dist;
+                truckAhead = other;
+              }
+            }
+          }
+
+          if (truckAhead && minDist < 80) {
+            // Truck ahead too close, go to pullover
+            truck.phase = 'AT_PULLOVER';
+            truck.pulloverTarget = Math.min(truck.roadDist + 100, PULLOVER_DIST);
+          } else {
+            truck.roadDist += TRUCK_SPEED * dt;
+            if (truck.roadDist >= PULLOVER_DIST) {
+              truck.roadDist = PULLOVER_DIST;
+              truck.phase = 'AT_QUARRY';
+              truck.waitTimer = LOAD_TIME;
+            }
+          }
+        } else if (truck.phase === 'AT_PULLOVER') {
+          // Wait in pullover until truck ahead clears (finishes loading and leaves)
+          let blockingTruck = null;
+          for (const other of state.trucks) {
+            if (other === truck || other.side !== truck.side) continue;
+            // Block if other truck is still loading or approaching quarry
+            if (other.phase === 'AT_QUARRY' || (other.phase === 'TO_QUARRY' && other.roadDist > truck.roadDist - 100)) {
+              blockingTruck = other;
+              break;
+            }
+          }
+
+          if (!blockingTruck) {
+            // Path clear, resume
+            truck.phase = 'TO_QUARRY';
           }
         } else if (truck.phase === 'AT_QUARRY') {
           truck.waitTimer -= dt;
@@ -685,6 +759,7 @@
             truck.ore = removed;
             truck.phase = 'TO_CRANE';
             truck.roadDist = roadLen;
+            truck.bobbleTime = 0;
           }
         } else if (truck.phase === 'TO_CRANE') {
           truck.roadDist -= TRUCK_SPEED * dt;
@@ -703,6 +778,7 @@
             }
             truck.ore = 0;
             truck.phase = 'IDLE';
+            truck.bobbleTime = 0;
           }
         }
 
@@ -725,6 +801,39 @@
         state.isReversed = false;
         state.stats.cycleCount++;
       }
+    }
+
+    /* ===== QUARRY FILL STATE TRACKING ===== */
+    function updateQuarryFlash(dt) {
+      const totA = quarryTotal(state.quarryA);
+      const totB = quarryTotal(state.quarryB);
+
+      // Check if A's fill state changed (empty/full thresholds)
+      const aWasEmpty = state.lastQuarryATotal <= EMPTY_THRESHOLD;
+      const aIsEmpty = totA <= EMPTY_THRESHOLD;
+      const aWasFull = state.lastQuarryATotal >= FULL_THRESHOLD;
+      const aIsFull = totA >= FULL_THRESHOLD;
+
+      if ((aWasEmpty && !aIsEmpty) || (aWasFull && !aIsFull) || (aIsEmpty && !aWasEmpty) || (aIsFull && !aWasFull)) {
+        state.quarryAFlash = 0.3;  // 300ms flash
+      }
+
+      // Check if B's fill state changed
+      const bWasEmpty = state.lastQuarryBTotal <= EMPTY_THRESHOLD;
+      const bIsEmpty = totB <= EMPTY_THRESHOLD;
+      const bWasFull = state.lastQuarryBTotal >= FULL_THRESHOLD;
+      const bIsFull = totB >= FULL_THRESHOLD;
+
+      if ((bWasEmpty && !bIsEmpty) || (bWasFull && !bIsFull) || (bIsEmpty && !bWasEmpty) || (bIsFull && !bWasFull)) {
+        state.quarryBFlash = 0.3;  // 300ms flash
+      }
+
+      state.lastQuarryATotal = totA;
+      state.lastQuarryBTotal = totB;
+
+      // Decay flash timers
+      state.quarryAFlash = Math.max(0, state.quarryAFlash - dt);
+      state.quarryBFlash = Math.max(0, state.quarryBFlash - dt);
     }
 
     /* ===== RENDERING ===== */
@@ -774,11 +883,10 @@
     }
 
     function drawQuarries() {
-      const drawQuarry = (q, x, y, cols, rows) => {
-        const cellW = 16;
-        const cellH = 16;
+      const drawQuarry = (q, quarryDef, flashTimer) => {
+        const { x, y, cols, rows, cellSize } = quarryDef;
         ctx.fillStyle = '#2a1a0a';
-        ctx.fillRect(x, y, cols * cellW, rows * cellH);
+        ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
 
         for (let row = 0; row < rows; row++) {
           for (let col = 0; col < cols; col++) {
@@ -792,18 +900,25 @@
             else color = '#3a3028';
 
             ctx.fillStyle = color;
-            ctx.fillRect(x + col * cellW, y + row * cellH, cellW, cellH);
+            ctx.fillRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
 
-            // Cell border
+            // Cell border (thinner)
             ctx.strokeStyle = '#2a1a0a';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x + col * cellW, y + row * cellH, cellW, cellH);
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(x + col * cellSize, y + row * cellSize, cellSize, cellSize);
           }
+        }
+
+        // Flash effect when fill state changes
+        if (flashTimer > 0) {
+          const flashAlpha = Math.min(1, flashTimer / 0.3 * 0.3);
+          ctx.fillStyle = `rgba(255, 255, 150, ${flashAlpha * 0.5})`;
+          ctx.fillRect(x, y, cols * cellSize, rows * cellSize);
         }
       };
 
-      drawQuarry(state.quarryA, QUARRY_A.x, QUARRY_A.y, QUARRY_A.cols, QUARRY_A.rows);
-      drawQuarry(state.quarryB, QUARRY_B.x, QUARRY_B.y, QUARRY_B.cols, QUARRY_B.rows);
+      drawQuarry(state.quarryA, QUARRY_A, state.quarryAFlash);
+      drawQuarry(state.quarryB, QUARRY_B, state.quarryBFlash);
     }
 
     function drawStations() {
@@ -924,6 +1039,7 @@
       ctx.save();
       ctx.translate(pos.x, pos.y);
       ctx.rotate(angle);
+      ctx.scale(1.5, 1.5);  // Scale train 1.5x
 
       // Body
       ctx.fillStyle = '#3a2a1a';
@@ -972,6 +1088,7 @@
       ctx.save();
       ctx.translate(pos.x, pos.y);
       ctx.rotate(angle);
+      ctx.scale(1.5, 1.5);  // Scale carriages 1.5x to match train
 
       // Body
       ctx.fillStyle = '#6b5a4a';
@@ -997,12 +1114,22 @@
     function drawTruck(truck) {
       const angle = Math.atan2(truck.y - (truck.y || 0), truck.x - (truck.x || 0));
 
+      // Add bobbing during load/unload
+      let bobbleY = 0;
+      if (truck.phase === 'AT_QUARRY' || truck.phase === 'AT_CRANE') {
+        bobbleY = Math.sin(truck.bobbleTime * Math.PI * 3) * 2;
+      }
+
       ctx.save();
-      ctx.translate(truck.x, truck.y);
+      ctx.translate(truck.x, truck.y + bobbleY);
       ctx.rotate(angle);
+      ctx.scale(1.5, 1.5);  // Scale trucks 1.5x
+
+      // Get truck color
+      const truckColor = TRUCK_COLORS[truck.colorIdx % TRUCK_COLORS.length];
 
       // Cabin
-      ctx.fillStyle = '#8b6a4a';
+      ctx.fillStyle = truckColor;
       ctx.fillRect(-8, -4, 6, 8);
 
       // Body
@@ -1053,10 +1180,20 @@
     }
 
     function render() {
-      ctx.fillStyle = '#2a251f';
+      // Simple dot pattern background instead of varied terrain
+      ctx.fillStyle = '#1a1815';
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-      drawTerrain();
+      // Subtle dot pattern
+      ctx.fillStyle = '#2a251f';
+      for (let x = 0; x < CANVAS_W; x += 20) {
+        for (let y = 0; y < CANVAS_H; y += 20) {
+          ctx.beginPath();
+          ctx.arc(x + 10, y + 10, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       drawRoads();
       drawQuarries();
       drawTrack();
@@ -1070,7 +1207,6 @@
       for (const truck of state.trucks) {
         drawTruck(truck);
       }
-      drawDayNight();
       drawLabels();
     }
 
@@ -1139,13 +1275,13 @@
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
 
-      state.dayTime = (state.dayTime + dt / DAY_CYCLE_SECS) % 1;
       state.stats.totalTime += dt;
 
       updateTrain(dt);
       updateCranes(dt);
       updateTrucks(dt);
       checkReversal();
+      updateQuarryFlash(dt);
 
       render();
 
