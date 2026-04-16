@@ -19,7 +19,8 @@ const CONFIG = {
   train: {
     speed: 100,              // pixels per second along path
     carriageCount: 3,
-    carriageSpacing: 40      // pixels between train units
+    carriageSpacing: 60,     // pixels between train units (larger scale)
+    scale: 1.5               // 1.5x size: 32 * 1.5 = 48 pixels
   },
 
   tile: {
@@ -132,7 +133,7 @@ function distance(x1, y1, x2, y2) {
 }
 
 /* =========================================================
-   TRACK SYSTEM - Tile-based track from SVG sprites
+   TRACK SYSTEM - Tile-based track with smooth arc corners
    ========================================================= */
 
 class TrackSystem {
@@ -140,7 +141,7 @@ class TrackSystem {
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
     this.tiles = [];      // Array of {x, y, type} for rendering
-    this.waypoints = [];  // Array of {x, y, angle} for train path
+    this.waypoints = [];  // Array of {x, y, angle, cumulativeDistance}
     this.totalLength = 0;
 
     this.buildTrack();
@@ -152,11 +153,7 @@ class TrackSystem {
     const tiles = [];
 
     // Build an oval track using tiles
-    // The track fits in roughly 38x22 tiles (1216x704 pixels)
-    // Canvas is 1200x800, so we'll center it
-
-    // Tile coordinates for track layout
-    // Using a simple oval made of straight and curved pieces
+    // Tile layout: 38 tiles wide (3-35), 20 tiles tall (4-19)
 
     // Top straight (left to right)
     for (let tx = 3; tx <= 35; tx++) {
@@ -198,68 +195,176 @@ class TrackSystem {
     }));
   }
 
+  /**
+   * Generate waypoints with smooth arc-based corners
+   *
+   * Track structure:
+   * - Top: straight horizontal from (3,4) to (35,4)
+   * - Top-right corner: arc from (36,4) to (36,5)
+   * - Right: straight vertical from (36,5) to (36,18)
+   * - Bottom-right corner: arc from (36,19) to (35,19)
+   * - Bottom: straight horizontal from (35,19) to (3,19)
+   * - Bottom-left corner: arc from (2,19) to (2,18)
+   * - Left: straight vertical from (2,18) to (2,5)
+   * - Top-left corner: arc from (2,4) to (3,4)
+   */
   generateWaypoints() {
-    // Generate waypoints by tracing through the track
-    // Center of each tile becomes a waypoint
-    // Angles are calculated based on track flow
-
     const T = 32;
     const waypoints = [];
-
-    // Define the path segments with their flow direction
-    const path = [
-      // Top straight: moving right
-      { start: { x: 3 * T + T/2, y: 4 * T + T/2 }, end: { x: 35 * T + T/2, y: 4 * T + T/2 } },
-      // Top-right curve: moving right-to-down
-      { start: { x: 36 * T + T/2, y: 4 * T + T/2 }, end: { x: 36 * T + T/2, y: 5 * T + T/2 } },
-      // Right straight: moving down
-      { start: { x: 36 * T + T/2, y: 5 * T + T/2 }, end: { x: 36 * T + T/2, y: 18 * T + T/2 } },
-      // Bottom-right curve: moving down-to-left
-      { start: { x: 36 * T + T/2, y: 19 * T + T/2 }, end: { x: 35 * T + T/2, y: 19 * T + T/2 } },
-      // Bottom straight: moving left
-      { start: { x: 35 * T + T/2, y: 19 * T + T/2 }, end: { x: 3 * T + T/2, y: 19 * T + T/2 } },
-      // Bottom-left curve: moving left-to-up
-      { start: { x: 2 * T + T/2, y: 19 * T + T/2 }, end: { x: 2 * T + T/2, y: 18 * T + T/2 } },
-      // Left straight: moving up
-      { start: { x: 2 * T + T/2, y: 18 * T + T/2 }, end: { x: 2 * T + T/2, y: 5 * T + T/2 } },
-      // Top-left curve: moving up-to-right
-      { start: { x: 2 * T + T/2, y: 4 * T + T/2 }, end: { x: 3 * T + T/2, y: 4 * T + T/2 } }
-    ];
-
-    // Create detailed waypoints
     let cumulativeDistance = 0;
-    for (let seg = 0; seg < path.length; seg++) {
-      const segment = path[seg];
-      const dx = segment.end.x - segment.start.x;
-      const dy = segment.end.y - segment.start.y;
-      const segmentLength = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx);
 
-      // Add waypoints every few pixels for smooth movement
-      const step = 2;
-      for (let d = 0; d <= segmentLength; d += step) {
-        const t = d / segmentLength;
+    // Helper: Add straight segment waypoints
+    const addStraightSegment = (start, end, angle) => {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const stepSize = 1; // waypoint every pixel for smoothness
+
+      for (let d = 0; d <= length; d += stepSize) {
+        const t = length > 0 ? d / length : 0;
         waypoints.push({
-          x: segment.start.x + dx * t,
-          y: segment.start.y + dy * t,
+          x: start.x + dx * t,
+          y: start.y + dy * t,
           angle: angle,
           cumulativeDistance: cumulativeDistance + d
         });
       }
+      cumulativeDistance += length;
+      return cumulativeDistance;
+    };
 
-      cumulativeDistance += segmentLength;
-    }
+    // Helper: Add arc segment (smooth curve)
+    // centerX, centerY: arc center point
+    // radiusX, radiusY: ellipse radii
+    // startAngle, endAngle: in radians
+    // angleIncrement: radians between waypoints
+    const addArcSegment = (centerX, centerY, radiusX, radiusY, startAngle, endAngle, startToEnd = true) => {
+      // Calculate arc length for accurate spacing
+      let arcLength = 0;
+      const angleStep = 0.05; // radians, 0.05 ≈ 2.86°
 
-    // Add final waypoint if not at end
-    if (waypoints.length > 0) {
-      const lastWaypoint = waypoints[waypoints.length - 1];
-      const firstWaypoint = waypoints[0];
-      const finalDist = distance(lastWaypoint.x, lastWaypoint.y, firstWaypoint.x, firstWaypoint.y);
-      cumulativeDistance += finalDist;
-    }
+      // Create waypoints along the arc
+      const currentAngle = startToEnd ? startAngle : startAngle;
+      const targetAngle = startToEnd ? endAngle : startAngle;
+      const direction = startToEnd ?
+        (endAngle >= startAngle ? 1 : -1) :
+        (endAngle >= startAngle ? -1 : 1);
+
+      for (let a = currentAngle;
+           direction > 0 ? a <= targetAngle : a >= targetAngle;
+           a += angleStep * direction) {
+
+        const x = centerX + radiusX * Math.cos(a);
+        const y = centerY + radiusY * Math.sin(a);
+
+        // Tangent to ellipse: angle perpendicular to radius
+        const tangentAngle = Math.atan2(radiusY * Math.cos(a), -radiusX * Math.sin(a));
+
+        waypoints.push({
+          x: x,
+          y: y,
+          angle: tangentAngle,
+          cumulativeDistance: cumulativeDistance + arcLength
+        });
+
+        // Accumulate arc length (approximate)
+        if (waypoints.length > 1) {
+          const prev = waypoints[waypoints.length - 2];
+          const curr = waypoints[waypoints.length - 1];
+          arcLength += distance(prev.x, prev.y, curr.x, curr.y);
+        }
+      }
+
+      // Ensure endpoint is included
+      const a = targetAngle;
+      const x = centerX + radiusX * Math.cos(a);
+      const y = centerY + radiusY * Math.sin(a);
+      const tangentAngle = Math.atan2(radiusY * Math.cos(a), -radiusX * Math.sin(a));
+
+      waypoints.push({
+        x: x,
+        y: y,
+        angle: tangentAngle,
+        cumulativeDistance: cumulativeDistance + arcLength
+      });
+
+      cumulativeDistance += arcLength;
+      return cumulativeDistance;
+    };
+
+    const T_centerX = 19.5 * T;  // Center of track in X (middle of 3-36 range)
+    const T_centerY = 11.5 * T;  // Center of track in Y (middle of 4-19 range)
+    const T_radiusX = 17 * T;     // Horizontal radius (19.5 - 3 = 16.5, round to 17)
+    const T_radiusY = 8 * T;      // Vertical radius (11.5 - 4 = 7.5, round to 8)
+
+    // 1. TOP STRAIGHT (moving right, angle = 0)
+    cumulativeDistance = addStraightSegment(
+      { x: 3 * T + T/2, y: 4 * T + T/2 },
+      { x: 35 * T + T/2, y: 4 * T + T/2 },
+      0 // radians, facing right
+    );
+
+    // 2. TOP-RIGHT CORNER (arc from right to down)
+    // Approximate arc from angle 0 (right) to -π/2 (down)
+    cumulativeDistance = addArcSegment(
+      T_centerX + 0.5*T, T_centerY - 7.5*T,  // center at (36.5*T, 4*T) approximately
+      0.5*T, 0.5*T,                           // small arc radius
+      0, -Math.PI/2,                          // 0 to -90 degrees
+      true
+    );
+
+    // 3. RIGHT STRAIGHT (moving down, angle = -π/2)
+    cumulativeDistance = addStraightSegment(
+      { x: 36 * T + T/2, y: 5 * T + T/2 },
+      { x: 36 * T + T/2, y: 18 * T + T/2 },
+      -Math.PI/2 // facing down
+    );
+
+    // 4. BOTTOM-RIGHT CORNER (arc from down to left)
+    // Approximate arc from angle -π/2 (down) to -π (left)
+    cumulativeDistance = addArcSegment(
+      T_centerX + 0.5*T, T_centerY + 7.5*T,  // center at (36.5*T, 19*T) approximately
+      0.5*T, 0.5*T,
+      -Math.PI/2, -Math.PI,
+      true
+    );
+
+    // 5. BOTTOM STRAIGHT (moving left, angle = π)
+    cumulativeDistance = addStraightSegment(
+      { x: 35 * T + T/2, y: 19 * T + T/2 },
+      { x: 3 * T + T/2, y: 19 * T + T/2 },
+      Math.PI // facing left
+    );
+
+    // 6. BOTTOM-LEFT CORNER (arc from left to up)
+    // Approximate arc from angle π (left) to π/2 (up)
+    cumulativeDistance = addArcSegment(
+      T_centerX - 0.5*T, T_centerY + 7.5*T,  // center at (2.5*T, 19*T) approximately
+      0.5*T, 0.5*T,
+      Math.PI, Math.PI/2,
+      true
+    );
+
+    // 7. LEFT STRAIGHT (moving up, angle = π/2)
+    cumulativeDistance = addStraightSegment(
+      { x: 2 * T + T/2, y: 18 * T + T/2 },
+      { x: 2 * T + T/2, y: 5 * T + T/2 },
+      Math.PI/2 // facing up
+    );
+
+    // 8. TOP-LEFT CORNER (arc from up to right)
+    // Approximate arc from angle π/2 (up) to 0 (right)
+    cumulativeDistance = addArcSegment(
+      T_centerX - 0.5*T, T_centerY - 7.5*T,  // center at (2.5*T, 4*T) approximately
+      0.5*T, 0.5*T,
+      Math.PI/2, 0,
+      true
+    );
 
     this.waypoints = waypoints;
     this.totalLength = cumulativeDistance;
+
+    console.log(`Generated ${waypoints.length} waypoints, total track length: ${cumulativeDistance.toFixed(2)} pixels`);
   }
 
   getTotalLength() {
@@ -268,19 +373,28 @@ class TrackSystem {
 
   getPositionAtDistance(distance) {
     // Handle wraparound
+    if (this.totalLength <= 0) {
+      return { x: 0, y: 0, angle: 0 };
+    }
+
     if (distance < 0) {
       distance = this.totalLength + (distance % this.totalLength);
     } else if (distance >= this.totalLength) {
       distance = distance % this.totalLength;
     }
 
-    // Find waypoint indices
+    // Binary search for waypoint
+    let low = 0;
+    let high = this.waypoints.length - 1;
     let index = 0;
-    for (let i = 0; i < this.waypoints.length; i++) {
-      if (this.waypoints[i].cumulativeDistance <= distance) {
-        index = i;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (this.waypoints[mid].cumulativeDistance <= distance) {
+        index = mid;
+        low = mid + 1;
       } else {
-        break;
+        high = mid - 1;
       }
     }
 
@@ -292,7 +406,7 @@ class TrackSystem {
     let segmentLength = segmentEnd - segmentStart;
 
     if (segmentLength <= 0) {
-      segmentLength = this.totalLength - segmentStart;
+      segmentLength = this.totalLength - segmentStart + next.cumulativeDistance;
     }
 
     if (segmentLength === 0) {
@@ -302,10 +416,11 @@ class TrackSystem {
     const t = (distance - segmentStart) / segmentLength;
     const tClamped = clamp(t, 0, 1);
 
+    // Interpolate position and angle smoothly
     return {
       x: lerp(current.x, next.x, tClamped),
       y: lerp(current.y, next.y, tClamped),
-      angle: current.angle
+      angle: current.angle + (next.angle - current.angle) * tClamped
     };
   }
 }
@@ -369,13 +484,14 @@ class Train {
     }
   }
 
-  draw(renderer) {
+  draw(renderer, scale = 1) {
     // Draw locomotive with smooth rotation
     renderer.drawSpriteWithRotation(
       'train-loco-e',
       this.locomotive.x,
       this.locomotive.y,
-      this.locomotive.angle
+      this.locomotive.angle,
+      scale
     );
 
     // Draw carriages with smooth rotation
@@ -384,7 +500,8 @@ class Train {
         'carriage-bucket-e',
         carriage.x,
         carriage.y,
-        carriage.angle
+        carriage.angle,
+        scale
       );
     }
   }
@@ -431,7 +548,7 @@ class Renderer {
     }
   }
 
-  drawSpriteWithRotation(spriteId, x, y, angle) {
+  drawSpriteWithRotation(spriteId, x, y, angle, scale = 1) {
     if (!this.ctx) return;
 
     const sprite = SPRITES[spriteId];
@@ -443,18 +560,21 @@ class Renderer {
     // Save context state
     this.ctx.save();
 
-    // Move to sprite center, rotate, then draw centered
+    // Move to sprite center, rotate, then draw centered (with scale)
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
-    this.ctx.drawImage(sprite, -16, -16, 32, 32);
+
+    const scaledSize = 32 * scale;
+    const offset = scaledSize / 2;
+    this.ctx.drawImage(sprite, -offset, -offset, scaledSize, scaledSize);
 
     // Restore context state
     this.ctx.restore();
   }
 
-  drawTrain(train) {
+  drawTrain(train, scale = 1) {
     if (!this.ctx) return;
-    train.draw(this);
+    train.draw(this, scale);
   }
 }
 
@@ -500,7 +620,7 @@ function gameLoop(timestamp) {
 
   renderer.clear();
   renderer.drawTrack(trackSystem);
-  renderer.drawTrain(train);
+  renderer.drawTrain(train, CONFIG.train.scale);
 
   requestAnimationFrame(gameLoop);
 }
