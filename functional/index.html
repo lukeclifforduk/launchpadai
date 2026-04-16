@@ -245,6 +245,251 @@
     </div>
   </div>
 
+  <!-- SVG Sprite Sheet (hidden) -->
+  <div id="spriteContainer" style="display: none;">
+    <svg xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         viewBox="0 0 32 32"
+         width="32" height="32"
+         shape-rendering="crispEdges"
+         image-rendering="pixelated"
+         id="spriteSheet">
+
+      <defs>
+        <!-- TRACK PIECES -->
+        <symbol id="track-straight-v" viewBox="0 0 32 32">
+          <rect x="0" y="0" width="32" height="32" fill="#c8b898"/>
+          <rect x="9"  y="0" width="2" height="32" fill="#7a7a7a"/>
+          <rect x="10" y="0" width="1" height="32" fill="#9e9e9e"/>
+          <rect x="21" y="0" width="2" height="32" fill="#7a7a7a"/>
+          <rect x="22" y="0" width="1" height="32" fill="#9e9e9e"/>
+          <rect x="6" y="2"  width="20" height="3" fill="#3b2d1a"/>
+          <rect x="7" y="2"  width="18" height="1" fill="#5c4a32"/>
+          <rect x="6" y="10" width="20" height="3" fill="#3b2d1a"/>
+          <rect x="7" y="10" width="18" height="1" fill="#5c4a32"/>
+          <rect x="6" y="18" width="20" height="3" fill="#3b2d1a"/>
+          <rect x="7" y="18" width="18" height="1" fill="#5c4a32"/>
+          <rect x="6" y="26" width="20" height="3" fill="#3b2d1a"/>
+          <rect x="7" y="26" width="18" height="1" fill="#5c4a32"/>
+        </symbol>
+
+        <symbol id="track-straight-h" viewBox="0 0 32 32">
+          <rect x="0" y="0" width="32" height="32" fill="#c8b898"/>
+          <rect x="0" y="9"  width="32" height="2" fill="#7a7a7a"/>
+          <rect x="0" y="10" width="32" height="1" fill="#9e9e9e"/>
+          <rect x="0" y="21" width="32" height="2" fill="#7a7a7a"/>
+          <rect x="0" y="22" width="32" height="1" fill="#9e9e9e"/>
+          <rect x="2"  y="6" width="3" height="20" fill="#3b2d1a"/>
+          <rect x="2"  y="7" width="1" height="18" fill="#5c4a32"/>
+          <rect x="10" y="6" width="3" height="20" fill="#3b2d1a"/>
+          <rect x="10" y="7" width="1" height="18" fill="#5c4a32"/>
+          <rect x="18" y="6" width="3" height="20" fill="#3b2d1a"/>
+          <rect x="18" y="7" width="1" height="18" fill="#5c4a32"/>
+          <rect x="26" y="6" width="3" height="20" fill="#3b2d1a"/>
+          <rect x="26" y="7" width="1" height="18" fill="#5c4a32"/>
+        </symbol>
+
+        <!-- LOCOMOTIVE SPRITES -->
+        <symbol id="train-loco-n" viewBox="0 0 32 32">
+          <rect x="8"  y="4"  width="16" height="24" fill="#2a2a2a"/>
+          <rect x="9"  y="5"  width="14" height="22" fill="#a8382a"/>
+          <rect x="9"  y="5"  width="2"  height="22" fill="#cc4c3a"/>
+          <rect x="9"  y="5"  width="14" height="2"  fill="#cc4c3a"/>
+          <rect x="14" y="3"  width="4"  height="4"  fill="#4a4a4a"/>
+          <rect x="15" y="2"  width="2"  height="2"  fill="#666666"/>
+          <rect x="14" y="0"  width="4"  height="2"  fill="#cccccc" opacity="0.6"/>
+          <rect x="11" y="9"  width="10" height="1"  fill="#8a2820"/>
+          <rect x="11" y="12" width="10" height="1"  fill="#8a2820"/>
+          <rect x="12" y="18" width="8"  height="4"  fill="#2a2a2a"/>
+          <rect x="13" y="19" width="6"  height="2"  fill="#e8d8a8"/>
+          <rect x="14" y="5"  width="4"  height="2"  fill="#e8d8a8"/>
+          <rect x="7"  y="8"  width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="8"  width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="14" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="14" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="20" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="20" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="14" y="27" width="4"  height="2"  fill="#666666"/>
+          <rect x="15" y="29" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="train-loco-e" viewBox="0 0 32 32">
+          <rect x="4"  y="8"  width="24" height="16" fill="#2a2a2a"/>
+          <rect x="5"  y="9"  width="22" height="14" fill="#a8382a"/>
+          <rect x="5"  y="9"  width="22" height="2"  fill="#cc4c3a"/>
+          <rect x="5"  y="9"  width="2"  height="14" fill="#cc4c3a"/>
+          <rect x="25" y="12" width="4"  height="4"  fill="#4a4a4a"/>
+          <rect x="28" y="13" width="2"  height="2"  fill="#666666"/>
+          <rect x="30" y="12" width="2"  height="4"  fill="#cccccc" opacity="0.6"/>
+          <rect x="17" y="11" width="1"  height="10" fill="#8a2820"/>
+          <rect x="20" y="11" width="1"  height="10" fill="#8a2820"/>
+          <rect x="6"  y="12" width="4"  height="8"  fill="#2a2a2a"/>
+          <rect x="7"  y="13" width="2"  height="6"  fill="#e8d8a8"/>
+          <rect x="25" y="14" width="2"  height="4"  fill="#e8d8a8"/>
+          <rect x="8"  y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="8"  y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="14" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="14" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="20" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="20" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="3"  y="14" width="2"  height="4"  fill="#666666"/>
+          <rect x="1"  y="15" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="train-loco-s" viewBox="0 0 32 32">
+          <rect x="8"  y="4"  width="16" height="24" fill="#2a2a2a"/>
+          <rect x="9"  y="5"  width="14" height="22" fill="#a8382a"/>
+          <rect x="9"  y="25" width="14" height="2"  fill="#8a2820"/>
+          <rect x="9"  y="5"  width="2"  height="22" fill="#cc4c3a"/>
+          <rect x="14" y="25" width="4"  height="4"  fill="#4a4a4a"/>
+          <rect x="15" y="28" width="2"  height="2"  fill="#666666"/>
+          <rect x="14" y="30" width="4"  height="2"  fill="#cccccc" opacity="0.6"/>
+          <rect x="11" y="20" width="10" height="1"  fill="#8a2820"/>
+          <rect x="11" y="23" width="10" height="1"  fill="#8a2820"/>
+          <rect x="12" y="7"  width="8"  height="4"  fill="#2a2a2a"/>
+          <rect x="13" y="8"  width="6"  height="2"  fill="#e8d8a8"/>
+          <rect x="14" y="25" width="4"  height="2"  fill="#e8d8a8"/>
+          <rect x="7"  y="8"  width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="8"  width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="14" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="14" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="20" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="20" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="14" y="3"  width="4"  height="2"  fill="#666666"/>
+          <rect x="15" y="1"  width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="train-loco-w" viewBox="0 0 32 32">
+          <rect x="4"  y="8"  width="24" height="16" fill="#2a2a2a"/>
+          <rect x="5"  y="9"  width="22" height="14" fill="#a8382a"/>
+          <rect x="5"  y="9"  width="22" height="2"  fill="#cc4c3a"/>
+          <rect x="25" y="9"  width="2"  height="14" fill="#8a2820"/>
+          <rect x="3"  y="12" width="4"  height="4"  fill="#4a4a4a"/>
+          <rect x="2"  y="13" width="2"  height="2"  fill="#666666"/>
+          <rect x="0"  y="12" width="2"  height="4"  fill="#cccccc" opacity="0.6"/>
+          <rect x="11" y="11" width="1"  height="10" fill="#8a2820"/>
+          <rect x="14" y="11" width="1"  height="10" fill="#8a2820"/>
+          <rect x="22" y="12" width="4"  height="8"  fill="#2a2a2a"/>
+          <rect x="23" y="13" width="2"  height="6"  fill="#e8d8a8"/>
+          <rect x="5"  y="14" width="2"  height="4"  fill="#e8d8a8"/>
+          <rect x="8"  y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="8"  y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="14" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="14" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="20" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="20" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="27" y="14" width="2"  height="4"  fill="#666666"/>
+          <rect x="29" y="15" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <!-- CARRIAGE SPRITES -->
+        <symbol id="carriage-bucket-n" viewBox="0 0 32 32">
+          <rect x="9"  y="5"  width="14" height="22" fill="#2a2a2a"/>
+          <rect x="10" y="6"  width="12" height="20" fill="#7a6832"/>
+          <rect x="10" y="6"  width="12" height="1"  fill="#9a884a"/>
+          <rect x="10" y="6"  width="1"  height="20" fill="#9a884a"/>
+          <rect x="10" y="11" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="10" y="16" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="10" y="21" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="12" y="8"  width="8"  height="14" fill="#555555"/>
+          <rect x="13" y="9"  width="2"  height="2"  fill="#444444"/>
+          <rect x="17" y="11" width="2"  height="2"  fill="#444444"/>
+          <rect x="14" y="14" width="2"  height="2"  fill="#666666"/>
+          <rect x="16" y="17" width="2"  height="1"  fill="#444444"/>
+          <rect x="13" y="19" width="2"  height="1"  fill="#666666"/>
+          <rect x="9"  y="9"  width="14" height="1"  fill="#4a4a4a"/>
+          <rect x="9"  y="18" width="14" height="1"  fill="#4a4a4a"/>
+          <rect x="7"  y="8"  width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="8"  width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="20" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="20" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="14" y="3"  width="4"  height="3"  fill="#666666"/>
+          <rect x="15" y="1"  width="2"  height="2"  fill="#4a4a4a"/>
+          <rect x="14" y="26" width="4"  height="3"  fill="#666666"/>
+          <rect x="15" y="29" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="carriage-bucket-e" viewBox="0 0 32 32">
+          <rect x="5"  y="9"  width="22" height="14" fill="#2a2a2a"/>
+          <rect x="6"  y="10" width="20" height="12" fill="#7a6832"/>
+          <rect x="6"  y="10" width="20" height="1"  fill="#9a884a"/>
+          <rect x="6"  y="10" width="1"  height="12" fill="#9a884a"/>
+          <rect x="11" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="16" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="21" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="8"  y="12" width="14" height="8"  fill="#555555"/>
+          <rect x="9"  y="13" width="2"  height="2"  fill="#444444"/>
+          <rect x="13" y="14" width="2"  height="2"  fill="#666666"/>
+          <rect x="17" y="13" width="2"  height="1"  fill="#444444"/>
+          <rect x="19" y="16" width="2"  height="2"  fill="#444444"/>
+          <rect x="9"  y="9"  width="1"  height="14" fill="#4a4a4a"/>
+          <rect x="18" y="9"  width="1"  height="14" fill="#4a4a4a"/>
+          <rect x="8"  y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="8"  y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="20" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="20" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="26" y="14" width="3"  height="4"  fill="#666666"/>
+          <rect x="29" y="15" width="2"  height="2"  fill="#4a4a4a"/>
+          <rect x="3"  y="14" width="3"  height="4"  fill="#666666"/>
+          <rect x="1"  y="15" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="carriage-bucket-s" viewBox="0 0 32 32">
+          <rect x="9"  y="5"  width="14" height="22" fill="#2a2a2a"/>
+          <rect x="10" y="6"  width="12" height="20" fill="#7a6832"/>
+          <rect x="10" y="25" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="21" y="6"  width="1"  height="20" fill="#5a4a28"/>
+          <rect x="10" y="6"  width="1"  height="20" fill="#9a884a"/>
+          <rect x="10" y="11" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="10" y="16" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="10" y="21" width="12" height="1"  fill="#5a4a28"/>
+          <rect x="12" y="8"  width="8"  height="14" fill="#555555"/>
+          <rect x="15" y="10" width="2"  height="2"  fill="#444444"/>
+          <rect x="13" y="13" width="2"  height="2"  fill="#666666"/>
+          <rect x="17" y="16" width="2"  height="2"  fill="#444444"/>
+          <rect x="14" y="19" width="2"  height="1"  fill="#666666"/>
+          <rect x="9"  y="9"  width="14" height="1"  fill="#4a4a4a"/>
+          <rect x="9"  y="18" width="14" height="1"  fill="#4a4a4a"/>
+          <rect x="7"  y="8"  width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="8"  width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="7"  y="20" width="2"  height="4"  fill="#666666"/>
+          <rect x="23" y="20" width="2"  height="4"  fill="#4a4a4a"/>
+          <rect x="14" y="3"  width="4"  height="3"  fill="#666666"/>
+          <rect x="15" y="1"  width="2"  height="2"  fill="#4a4a4a"/>
+          <rect x="14" y="26" width="4"  height="3"  fill="#666666"/>
+          <rect x="15" y="29" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+
+        <symbol id="carriage-bucket-w" viewBox="0 0 32 32">
+          <rect x="5"  y="9"  width="22" height="14" fill="#2a2a2a"/>
+          <rect x="6"  y="10" width="20" height="12" fill="#7a6832"/>
+          <rect x="6"  y="21" width="20" height="1"  fill="#5a4a28"/>
+          <rect x="25" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="6"  y="10" width="1"  height="12" fill="#9a884a"/>
+          <rect x="11" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="16" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="21" y="10" width="1"  height="12" fill="#5a4a28"/>
+          <rect x="8"  y="12" width="14" height="8"  fill="#555555"/>
+          <rect x="10" y="13" width="2"  height="2"  fill="#666666"/>
+          <rect x="14" y="15" width="2"  height="2"  fill="#444444"/>
+          <rect x="18" y="13" width="2"  height="1"  fill="#444444"/>
+          <rect x="11" y="17" width="2"  height="1"  fill="#666666"/>
+          <rect x="9"  y="9"  width="1"  height="14" fill="#4a4a4a"/>
+          <rect x="18" y="9"  width="1"  height="14" fill="#4a4a4a"/>
+          <rect x="8"  y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="8"  y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="20" y="7"  width="4"  height="2"  fill="#666666"/>
+          <rect x="20" y="23" width="4"  height="2"  fill="#4a4a4a"/>
+          <rect x="26" y="14" width="3"  height="4"  fill="#666666"/>
+          <rect x="29" y="15" width="2"  height="2"  fill="#4a4a4a"/>
+          <rect x="3"  y="14" width="3"  height="4"  fill="#666666"/>
+          <rect x="1"  y="15" width="2"  height="2"  fill="#4a4a4a"/>
+        </symbol>
+      </defs>
+
+    </svg>
+  </div>
+
   <script>
     /**
      * ========== INDUSTRIAL MINE SIMULATION ==========
@@ -284,6 +529,76 @@
     const ctx = canvas.getContext('2d');
     canvas.width = 1200;
     canvas.height = 700;
+
+    /* ===== SPRITE LOADING ===== */
+    const SPRITES = {};
+
+    function loadSprites() {
+      const spriteIds = [
+        'track-straight-v', 'track-straight-h',
+        'train-loco-n', 'train-loco-e', 'train-loco-s', 'train-loco-w',
+        'carriage-bucket-n', 'carriage-bucket-e', 'carriage-bucket-s', 'carriage-bucket-w'
+      ];
+
+      spriteIds.forEach(id => {
+        const symbol = document.getElementById(id);
+        if (!symbol) {
+          console.warn(`Sprite symbol not found: ${id}`);
+          return;
+        }
+
+        // Create an off-screen canvas for rendering sprite
+        const spriteCanvas = document.createElement('canvas');
+        spriteCanvas.width = 32;
+        spriteCanvas.height = 32;
+        const spriteCtx = spriteCanvas.getContext('2d');
+
+        // Create a temporary SVG element that wraps the symbol content
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 32 32');
+        svg.setAttribute('width', '32');
+        svg.setAttribute('height', '32');
+        svg.setAttribute('shape-rendering', 'crispEdges');
+        svg.setAttribute('image-rendering', 'pixelated');
+
+        // Clone the symbol's children (rect, circle, path elements, etc.)
+        for (let child of symbol.children) {
+          svg.appendChild(child.cloneNode(true));
+        }
+
+        // Convert SVG to image and render to canvas
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          spriteCtx.drawImage(img, 0, 0, 32, 32);
+          SPRITES[id] = spriteCanvas;
+          URL.revokeObjectURL(url);
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load sprite: ${id}`);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      });
+    }
+
+    // Direction mapping: Convert angle (radians) to cardinal direction
+    function getDirection(angle) {
+      // Normalize angle to 0-2π
+      let normalizedAngle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      // Convert to degrees for easier understanding: 0° = East
+      const deg = normalizedAngle * 180 / Math.PI;
+
+      // Map to cardinal directions (N/E/S/W)
+      if (deg >= 315 || deg < 45) return 'e';  // East (right)
+      if (deg >= 45 && deg < 135) return 's';  // South (down)
+      if (deg >= 135 && deg < 225) return 'w'; // West (left)
+      return 'n'; // North (up)
+    }
 
     /* ===== CONFIGURATION ===== */
     const CONFIG = {
@@ -1962,45 +2277,18 @@
       const train = state.train;
       const pos = posAtDist(train.dist);
       const angle = angleAtDist(train.dist);
+      const direction = getDirection(angle);
+      const spriteId = `train-loco-${direction}`;
+      const sprite = SPRITES[spriteId];
+
+      if (!sprite) return;  // Sprite not loaded yet
 
       ctx.save();
       ctx.translate(pos.x, pos.y);
       ctx.rotate(angle);
-      ctx.scale(1.5, 1.5);  // Scale train 1.5x
 
-      // Body - rust red
-      ctx.fillStyle = '#c9584c';
-      ctx.fillRect(-12, -8, 24, 16);
-
-      // Cab - dark brown
-      ctx.fillStyle = '#6b4423';
-      ctx.fillRect(8, -7, 8, 14);
-
-      // Windows - warm orange
-      ctx.fillStyle = '#d4854c';
-      ctx.fillRect(9, -5, 4, 4);
-      ctx.fillRect(9, 1, 4, 4);
-
-      // Boiler stripe - tan/light brown
-      ctx.strokeStyle = '#8b7355';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-8, 0);
-      ctx.lineTo(8, 0);
-      ctx.stroke();
-
-      // Chimney - medium gray-brown
-      ctx.fillStyle = '#5a4a3a';
-      ctx.fillRect(-6, -10, 4, 4);
-
-      // Wheels - black (keep dark for contrast)
-      ctx.fillStyle = '#2a2a2a';
-      ctx.beginPath();
-      ctx.arc(-8, 8, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(8, 8, 4, 0, Math.PI * 2);
-      ctx.fill();
+      // Draw sprite at correct size (32x32 sprite, center it)
+      ctx.drawImage(sprite, -16, -16, 32, 32);
 
       ctx.restore();
     }
@@ -2011,29 +2299,26 @@
       const pos = posAtDist(carriageDist);
       const angle = angleAtDist(carriageDist);
       const carriage = train.carriages[i];
+      const direction = getDirection(angle);
+      const spriteId = `carriage-bucket-${direction}`;
+      const sprite = SPRITES[spriteId];
+
+      if (!sprite) return;  // Sprite not loaded yet
 
       ctx.save();
       ctx.translate(pos.x, pos.y);
       ctx.rotate(angle);
-      ctx.scale(1.5, 1.5);  // Scale carriages 1.5x to match train
 
-      // Body - dark brown
-      ctx.fillStyle = '#6b4423';
-      ctx.fillRect(-10, -6, 20, 12);
+      // Draw sprite at correct size (32x32 sprite, center it)
+      ctx.drawImage(sprite, -16, -16, 32, 32);
 
-      // Ore visualization - warm brown/tan ore color
-      ctx.fillStyle = '#a87852';
-      const oreHeight = (carriage.ore / CARRIAGE_CAPACITY) * 6;
-      ctx.fillRect(-8, -2 - oreHeight, 16, oreHeight);
-
-      // Wheels - very dark (keep for contrast)
-      ctx.fillStyle = '#2a2a2a';
-      ctx.beginPath();
-      ctx.arc(-6, 6, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(6, 6, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // Optional: Draw ore level overlay if carriage is not full
+      // (The sprite already shows some cargo, so this is subtle)
+      if (carriage.ore < CARRIAGE_CAPACITY * 0.5) {
+        // Slightly darken if mostly empty to show capacity visually
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(-16, -16, 32, 32);
+      }
 
       ctx.restore();
     }
@@ -2275,6 +2560,7 @@
 
     /* ===== INITIALIZATION ===== */
     buildPath();
+    loadSprites();  // Load SVG sprites to canvas cache
     state.train.dist = STATION_A_DIST;
     state.train.lastStationDist = STATION_A_DIST;
 
