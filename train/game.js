@@ -78,57 +78,71 @@ async function loadSprites() {
       return false;
     }
 
-    const spriteGroup = svgDoc.querySelector('[id="sprites"]');
-    if (!spriteGroup) {
-      console.error('No sprites group found in SVG');
+    // Look for symbols in defs (no need for id="sprites" wrapper)
+    const defs = svgDoc.querySelector('defs');
+    if (!defs) {
+      console.error('No defs section found in SVG');
       return false;
     }
 
+    // Load sprites sequentially to ensure they're all loaded before returning
+    const loadPromises = [];
+
     for (const id of spriteIds) {
-      const symbol = spriteGroup.querySelector(`[id="${id}"]`);
+      const symbol = defs.querySelector(`symbol[id="${id}"]`);
       if (!symbol) {
         console.warn(`Sprite symbol not found: ${id}`);
         continue;
       }
 
-      // Create off-screen canvas for rendering
-      const spriteCanvas = document.createElement('canvas');
-      spriteCanvas.width = 32;
-      spriteCanvas.height = 32;
-      const spriteCtx = spriteCanvas.getContext('2d');
+      // Create a promise for each sprite load
+      const loadPromise = new Promise((resolve) => {
+        // Create off-screen canvas for rendering
+        const spriteCanvas = document.createElement('canvas');
+        spriteCanvas.width = 32;
+        spriteCanvas.height = 32;
+        const spriteCtx = spriteCanvas.getContext('2d');
 
-      // Create temporary SVG wrapping symbol content
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 32 32');
-      svg.setAttribute('width', '32');
-      svg.setAttribute('height', '32');
-      svg.setAttribute('shape-rendering', 'crispEdges');
-      svg.setAttribute('image-rendering', 'pixelated');
+        // Create temporary SVG wrapping symbol content
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 32 32');
+        svg.setAttribute('width', '32');
+        svg.setAttribute('height', '32');
+        svg.setAttribute('shape-rendering', 'crispEdges');
+        svg.setAttribute('image-rendering', 'pixelated');
 
-      // Clone symbol children
-      for (let child of symbol.children) {
-        svg.appendChild(child.cloneNode(true));
-      }
+        // Clone symbol children
+        for (let child of symbol.children) {
+          svg.appendChild(child.cloneNode(true));
+        }
 
-      // Convert SVG to image and render to canvas
-      const serializer = new XMLSerializer();
-      const svgString = serializer.serializeToString(svg);
-      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
+        // Convert SVG to image and render to canvas
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
 
-      const img = new Image();
-      img.onload = () => {
-        spriteCtx.drawImage(img, 0, 0, 32, 32);
-        SPRITES[id] = spriteCanvas;
-        URL.revokeObjectURL(url);
-      };
-      img.onerror = () => {
-        console.warn(`Failed to load sprite: ${id}`);
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
+        const img = new Image();
+        img.onload = () => {
+          spriteCtx.drawImage(img, 0, 0, 32, 32);
+          SPRITES[id] = spriteCanvas;
+          URL.revokeObjectURL(url);
+          resolve(true);
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load sprite: ${id}`);
+          URL.revokeObjectURL(url);
+          resolve(false);
+        };
+        img.src = url;
+      });
+
+      loadPromises.push(loadPromise);
     }
 
+    // Wait for all sprites to load
+    await Promise.all(loadPromises);
+    console.log(`Loaded ${Object.keys(SPRITES).length} sprites`);
     return true;
   } catch (error) {
     console.error('Failed to load sprites:', error);
