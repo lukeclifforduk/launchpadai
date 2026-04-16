@@ -196,20 +196,11 @@ class TrackSystem {
   }
 
   /**
-   * Generate waypoints with smooth arc-based corners
-   *
-   * Track structure:
-   * - Top: straight horizontal from (3,4) to (35,4)
-   * - Top-right corner: arc from (36,4) to (36,5)
-   * - Right: straight vertical from (36,5) to (36,18)
-   * - Bottom-right corner: arc from (36,19) to (35,19)
-   * - Bottom: straight horizontal from (35,19) to (3,19)
-   * - Bottom-left corner: arc from (2,19) to (2,18)
-   * - Left: straight vertical from (2,18) to (2,5)
-   * - Top-left corner: arc from (2,4) to (3,4)
+   * Generate waypoints that follow the actual track tile layout
+   * with smooth quarter-circle curves at corners
    */
   generateWaypoints() {
-    const T = 32;
+    const T = 32; // tile size
     const waypoints = [];
     let cumulativeDistance = 0;
 
@@ -218,7 +209,7 @@ class TrackSystem {
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      const stepSize = 1; // waypoint every pixel for smoothness
+      const stepSize = 2; // waypoint every 2 pixels for smoothness
 
       for (let d = 0; d <= length; d += stepSize) {
         const t = length > 0 ? d / length : 0;
@@ -229,136 +220,135 @@ class TrackSystem {
           cumulativeDistance: cumulativeDistance + d
         });
       }
+      // Always add endpoint
+      if (length > 0) {
+        waypoints[waypoints.length - 1] = {
+          x: end.x,
+          y: end.y,
+          angle: angle,
+          cumulativeDistance: cumulativeDistance + length
+        };
+      }
       cumulativeDistance += length;
-      return cumulativeDistance;
     };
 
-    // Helper: Add arc segment (smooth curve)
-    // centerX, centerY: arc center point
-    // radiusX, radiusY: ellipse radii
-    // startAngle, endAngle: in radians
-    // angleIncrement: radians between waypoints
-    const addArcSegment = (centerX, centerY, radiusX, radiusY, startAngle, endAngle, startToEnd = true) => {
-      // Calculate arc length for accurate spacing
-      let arcLength = 0;
-      const angleStep = 0.05; // radians, 0.05 ≈ 2.86°
+    // Helper: Add a quarter-circle arc corner
+    // Connects from incoming direction to outgoing direction
+    const addQuarterArcCorner = (centerX, centerY, radius, startAngle, endAngle) => {
+      const arcLength = radius * Math.PI / 2; // Quarter circle arc length
+      const angleStep = 0.1; // radians
 
-      // Create waypoints along the arc
-      const currentAngle = startToEnd ? startAngle : startAngle;
-      const targetAngle = startToEnd ? endAngle : startAngle;
-      const direction = startToEnd ?
-        (endAngle >= startAngle ? 1 : -1) :
-        (endAngle >= startAngle ? -1 : 1);
+      for (let a = startAngle;
+           (endAngle > startAngle ? a <= endAngle : a >= endAngle);
+           a += angleStep * (endAngle > startAngle ? 1 : -1)) {
 
-      for (let a = currentAngle;
-           direction > 0 ? a <= targetAngle : a >= targetAngle;
-           a += angleStep * direction) {
+        const x = centerX + radius * Math.cos(a);
+        const y = centerY + radius * Math.sin(a);
 
-        const x = centerX + radiusX * Math.cos(a);
-        const y = centerY + radiusY * Math.sin(a);
-
-        // Tangent to ellipse: angle perpendicular to radius
-        const tangentAngle = Math.atan2(radiusY * Math.cos(a), -radiusX * Math.sin(a));
+        // Tangent angle to circle
+        const tangentAngle = a + Math.PI / 2;
 
         waypoints.push({
           x: x,
           y: y,
           angle: tangentAngle,
-          cumulativeDistance: cumulativeDistance + arcLength
+          cumulativeDistance: cumulativeDistance
         });
 
-        // Accumulate arc length (approximate)
-        if (waypoints.length > 1) {
-          const prev = waypoints[waypoints.length - 2];
-          const curr = waypoints[waypoints.length - 1];
-          arcLength += distance(prev.x, prev.y, curr.x, curr.y);
-        }
+        cumulativeDistance += 2;
       }
 
-      // Ensure endpoint is included
-      const a = targetAngle;
-      const x = centerX + radiusX * Math.cos(a);
-      const y = centerY + radiusY * Math.sin(a);
-      const tangentAngle = Math.atan2(radiusY * Math.cos(a), -radiusX * Math.sin(a));
+      // Ensure endpoint
+      const x = centerX + radius * Math.cos(endAngle);
+      const y = centerY + radius * Math.sin(endAngle);
+      const tangentAngle = endAngle + Math.PI / 2;
 
-      waypoints.push({
+      waypoints[waypoints.length - 1] = {
         x: x,
         y: y,
         angle: tangentAngle,
-        cumulativeDistance: cumulativeDistance + arcLength
-      });
+        cumulativeDistance: cumulativeDistance
+      };
 
-      cumulativeDistance += arcLength;
-      return cumulativeDistance;
+      cumulativeDistance += radius * Math.PI / 2;
     };
 
-    const T_centerX = 19.5 * T;  // Center of track in X (middle of 3-36 range)
-    const T_centerY = 11.5 * T;  // Center of track in Y (middle of 4-19 range)
-    const T_radiusX = 17 * T;     // Horizontal radius (19.5 - 3 = 16.5, round to 17)
-    const T_radiusY = 8 * T;      // Vertical radius (11.5 - 4 = 7.5, round to 8)
+    // The track layout in tile coordinates:
+    // Top:    (3-35, 4)
+    // NE corner: (36, 4)
+    // Right:  (36, 5-18)
+    // SE corner: (36, 19)
+    // Bottom: (3-35, 19) going backwards
+    // SW corner: (2, 19)
+    // Left:   (2, 5-18) going backwards
+    // NW corner: (2, 4)
 
-    // 1. TOP STRAIGHT (moving right, angle = 0)
-    cumulativeDistance = addStraightSegment(
+    // 1. TOP STRAIGHT (left to right)
+    addStraightSegment(
       { x: 3 * T + T/2, y: 4 * T + T/2 },
       { x: 35 * T + T/2, y: 4 * T + T/2 },
-      0 // radians, facing right
+      0 // angle pointing right
     );
 
-    // 2. TOP-RIGHT CORNER (arc from right to down)
-    // Approximate arc from angle 0 (right) to -π/2 (down)
-    cumulativeDistance = addArcSegment(
-      T_centerX + 0.5*T, T_centerY - 7.5*T,  // center at (36.5*T, 4*T) approximately
-      0.5*T, 0.5*T,                           // small arc radius
-      0, -Math.PI/2,                          // 0 to -90 degrees
-      true
+    // 2. TOP-RIGHT CORNER
+    // From (1120, 128) heading right (0°) to (1152, 160) heading down (-90°)
+    // Arc center is at corner tile center (1152, 128)
+    addQuarterArcCorner(
+      36 * T + T/2, 4 * T + T/2,  // center at corner tile
+      T/2,                         // radius = half tile = 16px
+      0,                          // start: right
+      -Math.PI / 2                // end: down
     );
 
-    // 3. RIGHT STRAIGHT (moving down, angle = -π/2)
-    cumulativeDistance = addStraightSegment(
+    // 3. RIGHT STRAIGHT (top to bottom)
+    addStraightSegment(
       { x: 36 * T + T/2, y: 5 * T + T/2 },
       { x: 36 * T + T/2, y: 18 * T + T/2 },
-      -Math.PI/2 // facing down
+      -Math.PI / 2 // angle pointing down
     );
 
-    // 4. BOTTOM-RIGHT CORNER (arc from down to left)
-    // Approximate arc from angle -π/2 (down) to -π (left)
-    cumulativeDistance = addArcSegment(
-      T_centerX + 0.5*T, T_centerY + 7.5*T,  // center at (36.5*T, 19*T) approximately
-      0.5*T, 0.5*T,
-      -Math.PI/2, -Math.PI,
-      true
+    // 4. BOTTOM-RIGHT CORNER
+    // From (1152, 576) heading down (-90°) to (1120, 608) heading left (180°)
+    // Arc center at corner tile (1152, 608)
+    addQuarterArcCorner(
+      36 * T + T/2, 19 * T + T/2,  // center at corner tile
+      T/2,                          // radius
+      -Math.PI / 2,                // start: down
+      -Math.PI                     // end: left
     );
 
-    // 5. BOTTOM STRAIGHT (moving left, angle = π)
-    cumulativeDistance = addStraightSegment(
+    // 5. BOTTOM STRAIGHT (right to left)
+    addStraightSegment(
       { x: 35 * T + T/2, y: 19 * T + T/2 },
       { x: 3 * T + T/2, y: 19 * T + T/2 },
-      Math.PI // facing left
+      Math.PI // angle pointing left
     );
 
-    // 6. BOTTOM-LEFT CORNER (arc from left to up)
-    // Approximate arc from angle π (left) to π/2 (up)
-    cumulativeDistance = addArcSegment(
-      T_centerX - 0.5*T, T_centerY + 7.5*T,  // center at (2.5*T, 19*T) approximately
-      0.5*T, 0.5*T,
-      Math.PI, Math.PI/2,
-      true
+    // 6. BOTTOM-LEFT CORNER
+    // From (96, 608) heading left (180°) to (64, 576) heading up (90°)
+    // Arc center at corner tile (64, 608)
+    addQuarterArcCorner(
+      2 * T + T/2, 19 * T + T/2,  // center at corner tile
+      T/2,                         // radius
+      Math.PI,                    // start: left
+      Math.PI / 2                 // end: up
     );
 
-    // 7. LEFT STRAIGHT (moving up, angle = π/2)
-    cumulativeDistance = addStraightSegment(
+    // 7. LEFT STRAIGHT (bottom to top)
+    addStraightSegment(
       { x: 2 * T + T/2, y: 18 * T + T/2 },
       { x: 2 * T + T/2, y: 5 * T + T/2 },
-      Math.PI/2 // facing up
+      Math.PI / 2 // angle pointing up
     );
 
-    // 8. TOP-LEFT CORNER (arc from up to right)
-    // Approximate arc from angle π/2 (up) to 0 (right)
-    cumulativeDistance = addArcSegment(
-      T_centerX - 0.5*T, T_centerY - 7.5*T,  // center at (2.5*T, 4*T) approximately
-      0.5*T, 0.5*T,
-      Math.PI/2, 0,
-      true
+    // 8. TOP-LEFT CORNER
+    // From (64, 160) heading up (90°) to (96, 128) heading right (0°)
+    // Arc center at corner tile (64, 128)
+    addQuarterArcCorner(
+      2 * T + T/2, 4 * T + T/2,  // center at corner tile
+      T/2,                        // radius
+      Math.PI / 2,               // start: up
+      0                          // end: right (2π wraps to 0)
     );
 
     this.waypoints = waypoints;
