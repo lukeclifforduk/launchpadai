@@ -72,6 +72,84 @@ const CONFIG = {
 };
 
 /* =========================================================
+   SPRITE SYSTEM - SVG sprite loading and caching
+   ========================================================= */
+
+const SPRITES = {};
+
+/**
+ * Load SVG sprites and pre-render them to canvas
+ */
+function loadSprites() {
+  const spriteIds = [
+    'loco-n', 'loco-e', 'loco-s', 'loco-w',
+    'carriage-n', 'carriage-e', 'carriage-s', 'carriage-w'
+  ];
+
+  spriteIds.forEach(id => {
+    const symbol = document.getElementById(id);
+    if (!symbol) {
+      console.warn(`Sprite symbol not found: ${id}`);
+      return;
+    }
+
+    // Create an off-screen canvas for rendering sprite
+    const spriteCanvas = document.createElement('canvas');
+    spriteCanvas.width = 32;
+    spriteCanvas.height = 32;
+    const spriteCtx = spriteCanvas.getContext('2d');
+
+    // Create a temporary SVG element that wraps the symbol content
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 32 32');
+    svg.setAttribute('width', '32');
+    svg.setAttribute('height', '32');
+    svg.setAttribute('shape-rendering', 'crispEdges');
+    svg.setAttribute('image-rendering', 'pixelated');
+
+    // Clone the symbol's children (rect, circle, path elements, etc.)
+    for (let child of symbol.children) {
+      svg.appendChild(child.cloneNode(true));
+    }
+
+    // Convert SVG to image and render to canvas
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svg);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      spriteCtx.drawImage(img, 0, 0, 32, 32);
+      SPRITES[id] = spriteCanvas;
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      console.warn(`Failed to load sprite: ${id}`);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Get cardinal direction (n/e/s/w) from angle in radians
+ * 0° = East, 90° = South, 180° = West, 270° = North
+ */
+function getDirection(angle) {
+  // Normalize angle to 0-2π
+  let normalizedAngle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  // Convert to degrees for easier understanding
+  const deg = normalizedAngle * 180 / Math.PI;
+
+  // Map to cardinal directions (N/E/S/W)
+  if (deg >= 315 || deg < 45) return 'e';  // East
+  if (deg >= 45 && deg < 135) return 's';  // South
+  if (deg >= 135 && deg < 225) return 'w'; // West
+  return 'n'; // North
+}
+
+/* =========================================================
    UTILITY FUNCTIONS - Math and drawing helpers
    ========================================================= */
 
@@ -616,50 +694,18 @@ class Renderer {
   drawLocomotive(x, y, angle, trainConfig, colors) {
     if (!this.ctx) return;
 
-    const size = 32;
-    const half = size / 2;
+    const direction = getDirection(angle);
+    const spriteId = `loco-${direction}`;
+    const sprite = SPRITES[spriteId];
+
+    if (!sprite) return;  // Sprite not loaded yet
 
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Draw pixel art locomotive (32x32 grid)
-
-    // Wheels (bottom, visible)
-    this.ctx.fillStyle = colors.locoBody;
-    this.ctx.fillRect(-8, 10, 6, 6);    // Left rear wheel
-    this.ctx.fillRect(2, 10, 6, 6);     // Right rear wheel
-
-    // Main body - red locomotive
-    this.ctx.fillStyle = colors.locoRed;
-    this.ctx.fillRect(-10, -8, 20, 16); // Main cargo/boiler area
-
-    // Cab area - darker red back section
-    this.ctx.fillStyle = colors.locoBody;
-    this.ctx.fillRect(-10, -8, 5, 16);  // Back wall of cab
-
-    // Smokestack - bright gray cylinder
-    this.ctx.fillStyle = colors.locoGray;
-    this.ctx.fillRect(-3, -12, 6, 4);   // Smokestack pipe
-
-    // Smokestack cap
-    this.ctx.fillStyle = colors.locoBody;
-    this.ctx.fillRect(-4, -14, 8, 2);   // Top ring
-
-    // Windows (yellow headlight at front)
-    this.ctx.fillStyle = colors.locoYellow;
-    this.ctx.fillRect(8, -3, 4, 4);     // Front headlight
-    this.ctx.fillRect(8, 0, 4, 4);      // Front light
-
-    // Connector plate (gray detail)
-    this.ctx.fillStyle = colors.locoGray;
-    this.ctx.fillRect(10, -4, 2, 8);    // Coupling connector
-
-    // Wheel detail outline
-    this.ctx.strokeStyle = colors.locoBody;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(-8, 10, 6, 6);
-    this.ctx.strokeRect(2, 10, 6, 6);
+    // Draw sprite at correct size (32x32 sprite, center it)
+    this.ctx.drawImage(sprite, -16, -16, 32, 32);
 
     this.ctx.restore();
   }
@@ -677,41 +723,18 @@ class Renderer {
   drawCarriage(x, y, angle, trainConfig, colors) {
     if (!this.ctx) return;
 
-    const half = 16;
+    const direction = getDirection(angle);
+    const spriteId = `carriage-${direction}`;
+    const sprite = SPRITES[spriteId];
+
+    if (!sprite) return;  // Sprite not loaded yet
 
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Draw pixel art carriage (32x32 grid)
-
-    // Wheels (bottom, visible)
-    this.ctx.fillStyle = colors.locoBody;
-    this.ctx.fillRect(-8, 10, 6, 6);    // Left wheel
-    this.ctx.fillRect(2, 10, 6, 6);     // Right wheel
-
-    // Main cargo body - dark gray
-    this.ctx.fillStyle = colors.carriageGray;
-    this.ctx.fillRect(-10, -8, 20, 16); // Main box
-
-    // Side panels - lighter gray stripes for detail
-    this.ctx.fillStyle = colors.carriageLight;
-    this.ctx.fillRect(-10, -6, 2, 12);  // Left panel stripe
-    this.ctx.fillRect(8, -6, 2, 12);    // Right panel stripe
-
-    // Top panel detail
-    this.ctx.fillStyle = colors.carriageGray;
-    this.ctx.fillRect(-8, -8, 16, 2);   // Top edge
-
-    // Connector area (front)
-    this.ctx.fillStyle = colors.locoGray;
-    this.ctx.fillRect(10, -4, 2, 8);    // Coupling connector
-
-    // Wheel detail outline
-    this.ctx.strokeStyle = colors.locoBody;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(-8, 10, 6, 6);
-    this.ctx.strokeRect(2, 10, 6, 6);
+    // Draw sprite at correct size (32x32 sprite, center it)
+    this.ctx.drawImage(sprite, -16, -16, 32, 32);
 
     this.ctx.restore();
   }
@@ -802,6 +825,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   try {
+    // Load SVG sprites
+    loadSprites();
+
     // Create game objects
     renderer = new Renderer(canvas, CONFIG);
     trackSystem = new TrackSystem(CONFIG.track);

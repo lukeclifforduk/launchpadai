@@ -1,0 +1,263 @@
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  TOP-DOWN PIXEL ART TRAIN SPRITE SHEET                         ║
+  ║  Grid: 32×32px per tile  |  Palette: 12 colors (retro)         ║
+  ║  Rendering: crispEdges (pixel-perfect)                         ║
+  ║                                                                ║
+  ║  SPRITES INCLUDED:                                             ║
+  ║  ─────────────────────────────────────────────────────────────  ║
+  ║  ROLLING STOCK (32×32 each):                                   ║
+  ║    #loco-n        Locomotive facing north (up)                 ║
+  ║    #loco-e        Locomotive facing east (right)               ║
+  ║    #loco-s        Locomotive facing south (down)               ║
+  ║    #loco-w        Locomotive facing west (left)                ║
+  ║    #carriage-n    Cargo carriage facing north                  ║
+  ║    #carriage-e    Cargo carriage facing east                   ║
+  ║    #carriage-s    Cargo carriage facing south                  ║
+  ║    #carriage-w    Cargo carriage facing west                   ║
+  ║                                                                ║
+  ║  COLOR PALETTE:                                                ║
+  ║    #1a1a1a  Locomotive body (black)                            ║
+  ║    #ff3333  Locomotive accent (red)                            ║
+  ║    #ffff00  Locomotive headlight (yellow)                      ║
+  ║    #4a4a4a  Details (gray)                                     ║
+  ║    #3a3a3a  Carriage body (dark gray)                          ║
+  ║    #707070  Carriage highlight (light gray)                    ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 32 32"
+     width="32" height="32"
+     shape-rendering="crispEdges"
+     image-rendering="pixelated">
+
+  <defs>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- LOCOMOTIVE: FACING NORTH (UP)               -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="loco-n" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="8" y="20" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="20" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - red -->
+      <rect x="6" y="8" width="20" height="12" fill="#ff3333"/>
+
+      <!-- Cab back wall - black -->
+      <rect x="6" y="8" width="5" height="12" fill="#1a1a1a"/>
+
+      <!-- Smokestack -->
+      <rect x="14" y="4" width="4" height="4" fill="#4a4a4a"/>
+      <rect x="13" y="2" width="6" height="2" fill="#1a1a1a"/>
+
+      <!-- Headlights - yellow -->
+      <rect x="22" y="12" width="4" height="4" fill="#ffff00"/>
+      <rect x="22" y="16" width="4" height="4" fill="#ffff00"/>
+
+      <!-- Coupling -->
+      <rect x="14" y="20" width="4" height="2" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="8" y="20" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="18" y="20" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- LOCOMOTIVE: FACING EAST (RIGHT)             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="loco-e" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="6" y="8" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="6" y="18" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - red -->
+      <rect x="12" y="6" width="14" height="20" fill="#ff3333"/>
+
+      <!-- Cab back wall - black -->
+      <rect x="12" y="6" width="5" height="20" fill="#1a1a1a"/>
+
+      <!-- Smokestack -->
+      <rect x="26" y="14" width="4" height="4" fill="#4a4a4a"/>
+      <rect x="30" y="13" width="2" height="6" fill="#1a1a1a"/>
+
+      <!-- Headlights - yellow -->
+      <rect x="14" y="4" width="4" height="4" fill="#ffff00"/>
+      <rect x="18" y="4" width="4" height="4" fill="#ffff00"/>
+
+      <!-- Coupling -->
+      <rect x="12" y="14" width="2" height="4" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="6" y="8" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="6" y="18" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- LOCOMOTIVE: FACING SOUTH (DOWN)             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="loco-s" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="8" y="6" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="6" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - red -->
+      <rect x="6" y="12" width="20" height="12" fill="#ff3333"/>
+
+      <!-- Cab back wall - black -->
+      <rect x="21" y="12" width="5" height="12" fill="#1a1a1a"/>
+
+      <!-- Smokestack -->
+      <rect x="14" y="24" width="4" height="4" fill="#4a4a4a"/>
+      <rect x="13" y="28" width="6" height="2" fill="#1a1a1a"/>
+
+      <!-- Headlights - yellow -->
+      <rect x="6" y="12" width="4" height="4" fill="#ffff00"/>
+      <rect x="6" y="16" width="4" height="4" fill="#ffff00"/>
+
+      <!-- Coupling -->
+      <rect x="14" y="10" width="4" height="2" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="8" y="6" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="18" y="6" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- LOCOMOTIVE: FACING WEST (LEFT)              -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="loco-w" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="20" y="8" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="20" y="18" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - red -->
+      <rect x="6" y="6" width="14" height="20" fill="#ff3333"/>
+
+      <!-- Cab back wall - black -->
+      <rect x="15" y="6" width="5" height="20" fill="#1a1a1a"/>
+
+      <!-- Smokestack -->
+      <rect x="2" y="14" width="4" height="4" fill="#4a4a4a"/>
+      <rect x="0" y="13" width="2" height="6" fill="#1a1a1a"/>
+
+      <!-- Headlights - yellow -->
+      <rect x="10" y="4" width="4" height="4" fill="#ffff00"/>
+      <rect x="14" y="4" width="4" height="4" fill="#ffff00"/>
+
+      <!-- Coupling -->
+      <rect x="18" y="14" width="2" height="4" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="20" y="8" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="20" y="18" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- CARRIAGE: FACING NORTH                      -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="carriage-n" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="8" y="20" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="20" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - dark gray -->
+      <rect x="6" y="8" width="20" height="12" fill="#3a3a3a"/>
+
+      <!-- Side panels - light gray -->
+      <rect x="6" y="10" width="2" height="8" fill="#707070"/>
+      <rect x="24" y="10" width="2" height="8" fill="#707070"/>
+
+      <!-- Top panel edge -->
+      <rect x="8" y="8" width="16" height="2" fill="#3a3a3a"/>
+
+      <!-- Coupling -->
+      <rect x="14" y="20" width="4" height="2" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="8" y="20" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="18" y="20" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- CARRIAGE: FACING EAST                       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="carriage-e" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="6" y="8" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="6" y="18" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - dark gray -->
+      <rect x="12" y="6" width="14" height="20" fill="#3a3a3a"/>
+
+      <!-- Side panels - light gray -->
+      <rect x="14" y="6" width="8" height="2" fill="#707070"/>
+      <rect x="14" y="24" width="8" height="2" fill="#707070"/>
+
+      <!-- Top panel edge -->
+      <rect x="12" y="8" width="2" height="16" fill="#3a3a3a"/>
+
+      <!-- Coupling -->
+      <rect x="12" y="14" width="2" height="4" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="6" y="8" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="6" y="18" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- CARRIAGE: FACING SOUTH                      -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="carriage-s" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="8" y="6" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="18" y="6" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - dark gray -->
+      <rect x="6" y="12" width="20" height="12" fill="#3a3a3a"/>
+
+      <!-- Side panels - light gray -->
+      <rect x="6" y="14" width="2" height="8" fill="#707070"/>
+      <rect x="24" y="14" width="2" height="8" fill="#707070"/>
+
+      <!-- Top panel edge -->
+      <rect x="8" y="22" width="16" height="2" fill="#3a3a3a"/>
+
+      <!-- Coupling -->
+      <rect x="14" y="10" width="4" height="2" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="8" y="6" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="18" y="6" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- CARRIAGE: FACING WEST                       -->
+    <!-- ═══════════════════════════════════════════ -->
+    <symbol id="carriage-w" viewBox="0 0 32 32">
+      <!-- Wheels -->
+      <rect x="20" y="8" width="6" height="6" fill="#1a1a1a"/>
+      <rect x="20" y="18" width="6" height="6" fill="#1a1a1a"/>
+
+      <!-- Main body - dark gray -->
+      <rect x="6" y="6" width="14" height="20" fill="#3a3a3a"/>
+
+      <!-- Side panels - light gray -->
+      <rect x="6" y="8" width="2" height="8" fill="#707070"/>
+      <rect x="20" y="8" width="2" height="8" fill="#707070"/>
+
+      <!-- Top panel edge -->
+      <rect x="16" y="6" width="2" height="16" fill="#3a3a3a"/>
+
+      <!-- Coupling -->
+      <rect x="18" y="14" width="2" height="4" fill="#4a4a4a"/>
+
+      <!-- Wheel outlines -->
+      <rect x="20" y="8" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+      <rect x="20" y="18" width="6" height="6" fill="none" stroke="#1a1a1a" stroke-width="0.5"/>
+    </symbol>
+
+  </defs>
+
+</svg>
