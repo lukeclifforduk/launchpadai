@@ -3,23 +3,6 @@
    Color Palette & Styling
    ========================================================= */
 
-:root {
-  /* Main Background */
-  --color-grass: #7cb342;
-
-  /* Track Styling */
-  --color-track-light: #8b7355;     /* Outer rail */
-  --color-track-dark: #6b5344;      /* Inner rail/shadow */
-
-  /* Locomotive Styling */
-  --color-loco-dark: #2a2a2a;       /* Main body */
-  --color-loco-darkest: #1a1a1a;    /* Smokestack, wheels, shadows */
-  --color-loco-accent: #ff6600;     /* Windows, rust accents */
-
-  /* Carriage Styling */
-  --color-carriage: #3a3a3a;        /* Main body */
-  --color-carriage-dark: #2a2a2a;   /* Border/shadows */
-}
 
 /* =========================================================
    Global Styles
@@ -43,6 +26,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* =========================================================
+   Sprite Container (Hidden)
+   ========================================================= */
+
+#spriteContainer {
+  display: none;
 }
 
 /* =========================================================

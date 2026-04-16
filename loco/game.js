@@ -46,28 +46,14 @@ const CONFIG = {
     carriageSpacing: 40     // Distance between carriages (pixels along path)
   },
 
-  // Color palette - Retro 8-bit arcade aesthetic (12 colors total)
+  // Color palette - Retro 8-bit arcade aesthetic
+  // (Note: Train sprites are rendered from SVG; these colors are used for background/track rendering)
   colors: {
-    // Background & Environment
-    grass: '#2d5016',      // Dark forest green
-    dirt: '#6b4423',       // Brown earth
-    stone: '#a0a0a0',      // Light gray stone
-
-    // Track elements
-    trackLight: '#4a4a4a', // Dark gray rails
-    trackDark: '#2a2a2a',  // Very dark rail shadows
-    sleeper: '#8b6914',    // Golden brown wood
-
-    // Locomotive palette
-    locoBody: '#1a1a1a',   // Pure black body
-    locoGray: '#4a4a4a',   // Dark gray panels
-    locoRed: '#ff3333',    // Bright red accent
-    locoYellow: '#ffff00', // Bright yellow details
-
-    // Carriage palette
-    carriageGray: '#3a3a3a',    // Dark gray body
-    carriageLight: '#707070',   // Light gray panels
-    carriageAccent: '#ff3333'   // Red accent (matches loco)
+    grass: '#2d5016',      // Background grass color
+    dirt: '#6b4423',       // Background dirt color
+    trackLight: '#4a4a4a', // Track light color
+    trackDark: '#2a2a2a',  // Track shadow color
+    sleeper: '#8b6914'     // Track tie/sleeper color
   }
 };
 
@@ -79,6 +65,7 @@ const SPRITES = {};
 
 /**
  * Load SVG sprites and pre-render them to canvas
+ * Returns a Promise that resolves when all sprites are loaded
  */
 function loadSprites() {
   const spriteIds = [
@@ -86,50 +73,61 @@ function loadSprites() {
     'carriage-n', 'carriage-e', 'carriage-s', 'carriage-w'
   ];
 
-  spriteIds.forEach(id => {
-    const symbol = document.getElementById(id);
-    if (!symbol) {
-      console.warn(`Sprite symbol not found: ${id}`);
-      return;
-    }
+  return Promise.all(spriteIds.map(id => {
+    return new Promise((resolve, reject) => {
+      const symbol = document.getElementById(id);
+      if (!symbol) {
+        console.warn(`Sprite symbol not found: ${id}`);
+        reject(new Error(`Sprite symbol not found: ${id}`));
+        return;
+      }
 
-    // Create an off-screen canvas for rendering sprite
-    const spriteCanvas = document.createElement('canvas');
-    spriteCanvas.width = 32;
-    spriteCanvas.height = 32;
-    const spriteCtx = spriteCanvas.getContext('2d');
+      // Create an off-screen canvas for rendering sprite
+      const spriteCanvas = document.createElement('canvas');
+      spriteCanvas.width = 32;
+      spriteCanvas.height = 32;
+      const spriteCtx = spriteCanvas.getContext('2d');
 
-    // Create a temporary SVG element that wraps the symbol content
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 32 32');
-    svg.setAttribute('width', '32');
-    svg.setAttribute('height', '32');
-    svg.setAttribute('shape-rendering', 'crispEdges');
-    svg.setAttribute('image-rendering', 'pixelated');
+      if (!spriteCtx) {
+        console.error(`Failed to get 2D context for sprite: ${id}`);
+        reject(new Error(`No 2D context for ${id}`));
+        return;
+      }
 
-    // Clone the symbol's children (rect, circle, path elements, etc.)
-    for (let child of symbol.children) {
-      svg.appendChild(child.cloneNode(true));
-    }
+      // Create a temporary SVG element that wraps the symbol content
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 32 32');
+      svg.setAttribute('width', '32');
+      svg.setAttribute('height', '32');
+      svg.setAttribute('shape-rendering', 'crispEdges');
+      svg.setAttribute('image-rendering', 'pixelated');
 
-    // Convert SVG to image and render to canvas
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svg);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+      // Clone the symbol's children (rect, circle, path elements, etc.)
+      for (let child of symbol.children) {
+        svg.appendChild(child.cloneNode(true));
+      }
 
-    const img = new Image();
-    img.onload = () => {
-      spriteCtx.drawImage(img, 0, 0, 32, 32);
-      SPRITES[id] = spriteCanvas;
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => {
-      console.warn(`Failed to load sprite: ${id}`);
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  });
+      // Convert SVG to image and render to canvas
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svg);
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.onload = () => {
+        spriteCtx.drawImage(img, 0, 0, 32, 32);
+        SPRITES[id] = spriteCanvas;
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => {
+        console.error(`Failed to load sprite: ${id}`);
+        URL.revokeObjectURL(url);
+        reject(new Error(`Failed to load sprite: ${id}`));
+      };
+      img.src = url;
+    });
+  }));
 }
 
 /**
@@ -172,13 +170,6 @@ function lerp(a, b, t) {
  */
 function degreesToRadians(degrees) {
   return degrees * (Math.PI / 180);
-}
-
-/**
- * Convert radians to degrees
- */
-function radiansToDegrees(radians) {
-  return radians * (180 / Math.PI);
 }
 
 /**
@@ -816,7 +807,7 @@ function gameLoop(timestamp) {
 /**
  * Initialize game when DOM is loaded
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Get canvas element
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) {
@@ -825,8 +816,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   try {
-    // Load SVG sprites
-    loadSprites();
+    // Load SVG sprites - WAIT for completion before continuing
+    await loadSprites();
 
     // Create game objects
     renderer = new Renderer(canvas, CONFIG);
@@ -844,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Start game loop
+    // Start game loop - sprites are guaranteed to be ready
     lastTimestamp = null;
     requestAnimationFrame(gameLoop);
 
